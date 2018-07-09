@@ -53,7 +53,7 @@ static inline unsigned char *pk11_get_nx_bootloader(pk11_ctx_t *ctx) {
 }
 
 
-void pk11_process(pk11_ctx_t *ctx);
+int pk11_process(pk11_ctx_t *ctx);
 void pk11_print(pk11_ctx_t *ctx);
 void pk11_save(pk11_ctx_t *ctx);
 

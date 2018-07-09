@@ -4,7 +4,8 @@
  * \brief Cipher wrappers.
  *
  * \author Adriaan de Jong <dejong@fox-it.com>
- *
+ */
+/*
  *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
  *  SPDX-License-Identifier: Apache-2.0
  *
@@ -63,6 +64,14 @@ struct mbedtls_cipher_base_t
                      unsigned char *output );
 #endif
 
+#if defined(MBEDTLS_CIPHER_MODE_OFB)
+    /** Encrypt using OFB (Full length) */
+    int (*ofb_func)( void *ctx, size_t length, size_t *iv_off,
+                     unsigned char *iv,
+                     const unsigned char *input,
+                     unsigned char *output );
+#endif
+
 #if defined(MBEDTLS_CIPHER_MODE_CTR)
     /** Encrypt using CTR */
     int (*ctr_func)( void *ctx, size_t length, size_t *nc_off,
@@ -70,18 +79,11 @@ struct mbedtls_cipher_base_t
                      const unsigned char *input, unsigned char *output );
 #endif
 
-#if defined(MBEDTLS_CIPHER_MODE_XEX)
-    /** Encrypt using XEX */
-    int (*xex_func)( void *ctx, void *tweak_ctx, mbedtls_operation_t mode, 
-                     size_t length, unsigned char *iv, const unsigned char *input,
-                     unsigned char *output );
-#endif
-
 #if defined(MBEDTLS_CIPHER_MODE_XTS)
-    /** Encrypt using XTS */
-    int (*xts_func)( void *ctx, void *tweak_ctx, mbedtls_operation_t mode, 
-                     size_t length, unsigned char *iv, const unsigned char *input,
-                     unsigned char *output );
+    /** Encrypt or decrypt using XTS. */
+    int (*xts_func)( void *ctx, mbedtls_operation_t mode, size_t length,
+                     const unsigned char data_unit[16],
+                     const unsigned char *input, unsigned char *output );
 #endif
 
 #if defined(MBEDTLS_CIPHER_MODE_STREAM)

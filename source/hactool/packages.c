@@ -1,15 +1,18 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
 #include "packages.h"
 #include "aes.h"
 #include "rsa.h"
 #include "sha.h"
 
-void pk11_process(pk11_ctx_t *ctx) {
+int pk11_process(pk11_ctx_t *ctx) {
     fseeko64(ctx->file, 0, SEEK_SET);
     if (fread(&ctx->stage1, 1, sizeof(ctx->stage1), ctx->file) != sizeof(ctx->stage1)) {
-        fprintf(stderr, "Failed to read PK11 Stage 1!\n");
-        exit(EXIT_FAILURE);
+        //fprintf(stderr, "Failed to read PK11 Stage 1!\n");
+        //exit(EXIT_FAILURE);
+		return 1;
     }
     
     /* Check if PK11 was built in 2016. */
@@ -22,13 +25,15 @@ void pk11_process(pk11_ctx_t *ctx) {
     
     ctx->pk11 = malloc(ctx->stage1.pk11_size);
     if (ctx->pk11 == NULL) {
-        fprintf(stderr, "Failed to allocate PK11!\n");
-        exit(EXIT_FAILURE);
+        // fprintf(stderr, "Failed to allocate PK11!\n");
+        // exit(EXIT_FAILURE);
+		return 2;
     }
     
     if (fread(ctx->pk11, 1, ctx->stage1.pk11_size, ctx->file) != ctx->stage1.pk11_size) {
-        fprintf(stderr, "Failed to read PK11!\n");
-        exit(EXIT_FAILURE);
+        // fprintf(stderr, "Failed to read PK11!\n");
+        // exit(EXIT_FAILURE);
+		return 3;
     }
     
     aes_ctx_t *crypt_ctx = NULL;
@@ -46,8 +51,9 @@ void pk11_process(pk11_ctx_t *ctx) {
     }
     
     if (crypt_ctx == NULL) {
-        fprintf(stderr, "Failed to decrypt PK11! Is correct key present?\n");
-        exit(EXIT_FAILURE);
+        // fprintf(stderr, "Failed to decrypt PK11! Is correct key present?\n");
+        // exit(EXIT_FAILURE);
+		return 5;
     }
     
     aes_setiv(crypt_ctx, ctx->stage1.ctr, 0x10);
@@ -56,17 +62,15 @@ void pk11_process(pk11_ctx_t *ctx) {
     uint64_t pk11_size = 0x20 + ctx->pk11->warmboot_size + ctx->pk11->nx_bootloader_size + ctx->pk11->secmon_size;
     pk11_size = align64(pk11_size, 0x10);
     if (pk11_size != ctx->stage1.pk11_size) {
-        fprintf(stderr, "PK11 seems corrupt!\n");
-        exit(EXIT_FAILURE);
+        // fprintf(stderr, "PK11 seems corrupt!\n");
+        // exit(EXIT_FAILURE);
+		return 6;
     }
+
     
-    if (ctx->tool_ctx->action & ACTION_INFO) {
-        pk11_print(ctx);
-    }
-    
-    if (ctx->tool_ctx->action & ACTION_EXTRACT) {
-        pk11_save(ctx);
-    }
+    pk11_save(ctx);
+	
+	return 0;
 }
 
 void pk11_print(pk11_ctx_t *ctx) {
@@ -224,10 +228,6 @@ void pk21_process(pk21_ctx_t *ctx) {
             }
             offset += kip1_get_size(&ctx->ini1_ctx.kips[i]);
         }
-    }
-    
-    if (ctx->tool_ctx->action & ACTION_INFO) {
-        pk21_print(ctx);
     }
     
     if (ctx->tool_ctx->action & ACTION_EXTRACT) {

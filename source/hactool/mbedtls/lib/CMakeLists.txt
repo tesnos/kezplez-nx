@@ -6,6 +6,7 @@ set(src_crypto
     aes.c
     aesni.c
     arc4.c
+    aria.c
     asn1parse.c
     asn1write.c
     base64.c
@@ -28,8 +29,8 @@ set(src_crypto
     entropy_poll.c
     error.c
     gcm.c
-    gf128mul.c
     havege.c
+    hkdf.c
     hmac_drbg.c
     md.c
     md2.c
@@ -47,8 +48,10 @@ set(src_crypto
     pkparse.c
     pkwrite.c
     platform.c
+    platform_util.c
     ripemd160.c
     rsa.c
+    rsa_internal.c
     sha1.c
     sha256.c
     sha512.c
@@ -141,15 +144,15 @@ endif(USE_STATIC_MBEDTLS_LIBRARY)
 
 if(USE_SHARED_MBEDTLS_LIBRARY)
     add_library(mbedcrypto SHARED ${src_crypto})
-    set_target_properties(mbedcrypto PROPERTIES VERSION 2.6.1 SOVERSION 0)
+    set_target_properties(mbedcrypto PROPERTIES VERSION 2.11.0 SOVERSION 3)
     target_link_libraries(mbedcrypto ${libs})
 
     add_library(mbedx509 SHARED ${src_x509})
-    set_target_properties(mbedx509 PROPERTIES VERSION 2.6.1 SOVERSION 0)
+    set_target_properties(mbedx509 PROPERTIES VERSION 2.11.0 SOVERSION 0)
     target_link_libraries(mbedx509 ${libs} mbedcrypto)
 
     add_library(mbedtls SHARED ${src_tls})
-    set_target_properties(mbedtls PROPERTIES VERSION 2.6.1 SOVERSION 10)
+    set_target_properties(mbedtls PROPERTIES VERSION 2.11.0 SOVERSION 11)
     target_link_libraries(mbedtls ${libs} mbedx509)
 
     install(TARGETS mbedtls mbedx509 mbedcrypto

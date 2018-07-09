@@ -25,13 +25,14 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
+#include <string.h>
+
 #if defined(MBEDTLS_ENTROPY_C)
 
 #include "mbedtls/entropy.h"
 #include "mbedtls/entropy_poll.h"
 
 #if defined(MBEDTLS_TIMING_C)
-#include <string.h>
 #include "mbedtls/timing.h"
 #endif
 #if defined(MBEDTLS_HAVEGE_C)
@@ -44,7 +45,7 @@
 #if !defined(MBEDTLS_NO_PLATFORM_ENTROPY)
 
 #if !defined(unix) && !defined(__unix__) && !defined(__unix) && \
-    !defined(__APPLE__) && !defined(_WIN32)
+    !defined(__APPLE__) && !defined(_WIN32) && !defined(__QNXNTO__)
 #error "Platform entropy sources only work on Unix and Windows, see MBEDTLS_NO_PLATFORM_ENTROPY in config.h"
 #endif
 
