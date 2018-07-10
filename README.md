@@ -27,18 +27,18 @@ See LICENSE.md
 Requires libnx + libcurl and libfreetype from the devkitpro pacman switch-portlibs.
 Just type `make` and you'll have yourself a fresh build.
 
-Note: requires [this](https://github.com/switchbrew/libnx/pull/130) pr for libnx
+Note: requires [this](https://github.com/switchbrew/libnx/pull/130) pr for libnx (Should be merged soon)
 
 ## Thanks to...
-SciresM for hactool
-@Stay off my cock#6239 (Shadów on the ReSwitched discord) for knowing you can generate keys for firmwares with only their keyblob seeds and updating the original kezplez to make it much better
-mbedtls
-libcurl
-Team Reswitched
-Everyone who has helped me with my dumb mistakes in the ReSwitched Discord
-Team Switchbrew
+* SciresM for hactool
+* @Stay off my cock#6239 (Shadów on the ReSwitched discord) for knowing you can generate keys for firmwares with only their keyblob seeds and updating the original kezplez to make it much better
+* mbedtls
+* libcurl
+* Team Reswitched
+* Everyone who has helped me with my dumb mistakes in the ReSwitched Discord
+* Team Switchbrew
 
 ## The message "PLEASE stop hurting people and killing the homebrew scene" goes to...
-4chan
-Team Xecuter
-Bigots
+* 4chan
+* Team Xecuter
+* Bigots
