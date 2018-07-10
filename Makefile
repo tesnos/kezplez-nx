@@ -42,6 +42,7 @@ DATA		:=	data
 INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
 #ROMFS   	:=	assets/romfs
+ICON        :=  icon.jpg
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -58,7 +59,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lnx -lmbedtls -lmbedx509 -lmbedcrypto -llz4 `freetype-config --libs`
+LIBS	:= -lnx -lcurl -lmbedtls -lmbedx509 -lmbedcrypto `freetype-config --libs`
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

@@ -39,8 +39,26 @@ void gui_beginframe()
 void gui_drawframe(int appstate)
 {
 	char a[33]; a[32] = 0x00;
-	snprintf(a, 32, "%02x", appstate);
+	snprintf(a, 32, "%02i", appstate);
 	graphics_draw_text(50, 18, graphics_get_theme_color_font(), a);
+}
+
+void gui_draw_link(char* curl_resp)
+{
+	char a[32] = "https://hastebin.com/";
+	snprintf(a + 21, 10, "%s", curl_resp);
+	graphics_draw_text(50, 150, graphics_get_theme_color_font(), "You may also find your keys at the following link, which will expire in 30 days:");
+	graphics_draw_text(50, 220, graphics_get_theme_color_font(), a);
+}
+
+void gui_draw_begininfo(void)
+{
+	graphics_draw_text(50, 80, graphics_get_theme_color_font(), "Press A to begin. This process may take up to 2 minutes, so please patient.\nAs progress is made, the above counter will increment and when it reaches 19 the program has finished.\nIt is expected for the counter to be stuck at 17 for a while.");
+}
+
+void gui_draw_doneinfo(void)
+{
+	graphics_draw_text(50, 80, graphics_get_theme_color_font(), "All keys have been extracted.\nThey are in a file named 'keys.txt' at the root of your sd card.\nPress + to exit.");
 }
 
 void gui_endframe()

@@ -4,6 +4,7 @@
 #include <switch.h>
 #include <stdbool.h>
 #include <mbedtls/sha256.h>
+// #include <curl/curl.h>
 
 //hactool includes
 #include "hactool/extkeys.h"
@@ -977,18 +978,62 @@ void final_derivation()
 	pki_derive_keys(&tool_ctx.settings.keyset);
 	update_keyfile(2, &tool_ctx.settings.keyset);
 	
+	char* keydata;
+	
+	keyfile = fopen(keyfilepath, "rb");
+	fseek(keyfile, 0, SEEK_END);
+	int keyfilesize = ftell(keyfile);
+	fseek(keyfile, 0, SEEK_SET);
+	keydata = malloc(keyfilesize);
+	fread(keydata, keyfilesize, 1, keyfile);
+	fclose(keyfile);
+	
+	FILE* newkeyfile = fopen("/keys.txt", "wb");
+	fwrite(keydata, keyfilesize, 1, newkeyfile);
+	fclose(newkeyfile);
+	free(keydata);
+	
 	step_result = 0;
 	step_completed = true;
 }
+
+// struct MemoryStruct {
+	// char *memory;
+	// size_t size;
+// };
+ 
+// static size_t
+// WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+// {
+	// size_t realsize = size * nmemb;
+	// struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+	// mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+	// if(mem->memory == NULL) {
+		// /* out of memory! */ 
+		// return 0;
+	// }
+
+	// memcpy(&(mem->memory[mem->size]), contents, realsize);
+	// mem->size += realsize;
+	// mem->memory[mem->size] = 0;
+
+	// return realsize;
+// }
 
 
 int main(int argc, char** argv)
 {
 	//app init
 	gui_init();
+	
+	//curl init
 	// socketInitializeDefault();
-	// nxlinkSetup();
-	// nxlinkStdio();
+	// CURL *curl = NULL;
+	// CURLcode res = CURLE_OK;
+	
+	// struct MemoryStruct chunk;
+	// char* data_to_post;
 	
 	//internal variable inits
 	appstate = 0;
@@ -1132,6 +1177,38 @@ int main(int argc, char** argv)
 			
 			if (progress == 19)
 			{
+				// Will be finished later
+				// chunk.memory = malloc(1);  /* will be grown as needed by realloc above */ 
+				// chunk.size = 0;
+				// curl_global_init(CURL_GLOBAL_DEFAULT);
+
+				// curl = curl_easy_init();
+				
+				// if (curl)
+				// {
+					// curl_easy_setopt(curl, CURLOPT_URL, "https://hastebin.com/documents");
+					// curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+					// curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+					// curl_easy_setopt(curl, CURLOPT_USERAGENT, "no-agent/2.0");
+					
+					// keyfile = fopen(keyfilepath, "rb");
+					// fseek(keyfile, 0, SEEK_END);
+					// int keyfilesize = ftell(keyfile);
+					// fseek(keyfile, 0, SEEK_SET);
+					// data_to_post = malloc(keyfilesize);
+					// fread(data_to_post, keyfilesize, 1, keyfile);
+					// fclose(keyfile);
+					
+					// curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data_to_post);
+					// curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long) keyfilesize);
+					// res = curl_easy_perform(curl);
+					// free(data_to_post);
+					
+					// curl_easy_cleanup(curl);
+					// curl_global_cleanup();
+					// progress++;
+				// }
+				
 				appstate = 2;
 			}
 		}
@@ -1139,12 +1216,35 @@ int main(int argc, char** argv)
 		
 		gui_beginframe();
 		gui_drawframe(progress);
+		if (appstate == 2)
+		{
+			// if (res == CURLE_OK)
+			// {
+				// gui_draw_link(chunk.memory);
+			// }
+			// else
+			// {
+				// char errcode[5]; errcode[4] = 0x00;
+				// sprintf(errcode, "%04x", res);
+				// gui_draw_link(errcode);
+			// }
+			gui_draw_doneinfo();
+		}
+		if (appstate == 0)
+		{
+			gui_draw_begininfo();
+		}
 		gui_endframe();
 	}
 	
 	
-	// socketExit();
+	//cleanup
+	socketExit();
 	gui_exit();
+	// if (curl)
+	// {
+		// free(chunk.memory);
+	// }
 	
 	if (TZ_DATA != NULL) { free(TZ_DATA); }
 	return 0;

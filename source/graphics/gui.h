@@ -31,6 +31,12 @@ void gui_beginframe(void);
 
 void gui_drawframe(int appstate);
 
+void gui_draw_link(char* curl_resp);
+
+void gui_draw_doneinfo(void);
+
+void gui_draw_begininfo(void);
+
 void gui_endframe(void);
 
 void gui_blankframe(void);
