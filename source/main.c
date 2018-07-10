@@ -4,6 +4,7 @@
 #include <switch.h>
 #include <stdbool.h>
 #include <mbedtls/sha256.h>
+#include <sys/stat.h>
 // #include <curl/curl.h>
 
 //hactool includes
@@ -1025,6 +1026,7 @@ void final_derivation()
 int main(int argc, char** argv)
 {
 	//app init
+	mkdir("/switch/kezplez-nx\0", 777);
 	gui_init();
 	
 	//curl init
