@@ -7,7 +7,7 @@ YOU MUST HAVE DUMPED YOUR FUSES AND TSEC_KEYS BEFORE USING THIS.
 
 Dumping tsec_keys will be an option in the 3.3 release of CTCaer's hekate, for now you must use the build provided in the releases.
 
-1. Launch CTCaer's hekate mod, and dump your kfuses and tsec_keys by going through the menu
+1. Launch CTCaer's hekate mod, and dump your fuses (not kfuses!) and tsec_keys by going through the menu
 * For fuses, Console Info -> Print fuse info -> Press power button
 * For tsec_keys, Console Info -> Print TSEC keys -> Press power button
 ### IF YOU ARE ON 1.0.0 - 2.3.0, ALSO DO THE FOLLOWING IN HEKATE:
