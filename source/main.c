@@ -9,6 +9,7 @@
 
 //hactool includes
 #include "hactool/extkeys.h"
+#include "hactool/kip.h"
 #include "hactool/nca.h"
 #include "hactool/packages.h"
 #include "hactool/pki.h"
@@ -36,6 +37,9 @@ char PKG21_DATA[PKG21_SIZE];
 //These are variable, so they are defined later
 char* TZ_DATA = NULL;
 int TZ_SIZE;
+
+//Are these from hekate?
+bool BOOT0_FH, BCP21_FH;
 
 char ZERO_KEY[0x100] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
@@ -592,8 +596,6 @@ void hactool_init()
 
 void dump_bis_partition(char* filepath, u32 partition_id)
 {
-	step_completed = false;
-	
 	FILE* dumpfile = fopen(filepath, "wb");
 	FsStorage partition;
 	u64 partition_size, dump_progress, bytes_to_dump;
@@ -630,33 +632,136 @@ void dump_bis_partition(char* filepath, u32 partition_id)
 	fsStorageClose(&partition);
 	fclose(dumpfile);
 	
-	step_completed = true;
 	step_result = rc;
 }
 
 void dump_boot0()
 {
-	dump_bis_partition("/switch/kezplez-nx/boot0.bin", 0);
+	step_completed = false;
+	
+	FILE* hekate_boot0_f = fopen("/Backup/BOOT0", "rb");
+	if (hekate_boot0_f != NULL) { BOOT0_FH = true; }
+	else { BOOT0_FH = false; }
+	
+	if (BOOT0_FH)
+	{
+		FILE* real_boot0_f = fopen("/switch/kezplez-nx/boot0.bin", "wb");
+		
+		fseek(hekate_boot0_f, 0, SEEK_END);
+		int boot0_temp_size = ftell(hekate_boot0_f);
+		fseek(hekate_boot0_f, 0, SEEK_SET);
+		
+		char* boot0_temp_buf = malloc(boot0_temp_size);
+		fread(boot0_temp_buf, boot0_temp_size, 1, hekate_boot0_f);
+		fwrite(boot0_temp_buf, boot0_temp_size, 1, real_boot0_f);
+		
+		fclose(real_boot0_f);
+		fclose(hekate_boot0_f);
+		free(boot0_temp_buf);
+		
+		step_result = 0;
+	}
+	else
+	{
+		dump_bis_partition("/switch/kezplez-nx/boot0.bin", 0);
+	}
+	
+	step_completed = true;
 }
 
 void dump_bcpkg_21()
 {
-	dump_bis_partition("/switch/kezplez-nx/BCPKG_21_NormalMain.bin", 21);
+	step_completed = false;
+	
+	FILE* hekate_pkg2_f = fopen("/Backup/pkg2/pkg2_decr.bin", "rb");
+	FILE* hekate_ini1_f = fopen("/Backup/pkg2/ini1.bin", "rb");
+	FILE* hekate_kern_f = fopen("/Backup/pkg2/kernel.bin", "rb");
+	
+	if (hekate_pkg2_f != NULL && hekate_ini1_f != NULL && hekate_kern_f != NULL)
+	{
+		BCP21_FH = true;
+	}
+	else
+	{
+		BCP21_FH = false;
+		
+		if (hekate_pkg2_f != NULL) { fclose(hekate_pkg2_f); }
+		if (hekate_ini1_f != NULL) { fclose(hekate_ini1_f); }
+		if (hekate_kern_f != NULL) { fclose(hekate_kern_f); }
+	}
+	
+	if (BCP21_FH)
+	{
+		mkdir("/switch/kezplez-nx/package2", 777);
+		
+		FILE* real_pkg2_f = fopen("/switch/kezplez-nx/package2/Decrypted.bin", "wb");
+		
+		fseek(hekate_pkg2_f, 0, SEEK_END);
+		int pkg2_temp_size = ftell(hekate_pkg2_f);
+		fseek(hekate_pkg2_f, 0, SEEK_SET);
+		
+		char* pkg2_temp_buf = malloc(pkg2_temp_size);
+		fread(pkg2_temp_buf, pkg2_temp_size, 1, hekate_pkg2_f);
+		fwrite(pkg2_temp_buf, pkg2_temp_size, 1, real_pkg2_f);
+		
+		fclose(real_pkg2_f);
+		fclose(hekate_pkg2_f);
+		free(pkg2_temp_buf);
+		
+		FILE* real_ini1_f = fopen("/switch/kezplez-nx/package2/INI1.bin", "wb");
+		
+		fseek(hekate_ini1_f, 0, SEEK_END);
+		int ini1_temp_size = ftell(hekate_ini1_f);
+		fseek(hekate_ini1_f, 0, SEEK_SET);
+		
+		char* ini1_temp_buf = malloc(ini1_temp_size);
+		fread(ini1_temp_buf, ini1_temp_size, 1, hekate_ini1_f);
+		fwrite(ini1_temp_buf, ini1_temp_size, 1, real_ini1_f);
+		
+		fclose(real_ini1_f);
+		fclose(hekate_ini1_f);
+		free(ini1_temp_buf);
+		
+		FILE* real_kern_f = fopen("/switch/kezplez-nx/package2/Kernel.bin", "wb");
+		
+		fseek(hekate_kern_f, 0, SEEK_END);
+		int kern_temp_size = ftell(hekate_kern_f);
+		fseek(hekate_kern_f, 0, SEEK_SET);
+		
+		char* kern_temp_buf = malloc(kern_temp_size);
+		fread(kern_temp_buf, kern_temp_size, 1, hekate_kern_f);
+		fwrite(kern_temp_buf, kern_temp_size, 1, real_kern_f);
+		
+		fclose(real_kern_f);
+		fclose(hekate_kern_f);
+		free(kern_temp_buf);
+		
+		step_result = 0;
+	}
+	else
+	{
+		dump_bis_partition("/switch/kezplez-nx/BCPKG_21_NormalMain.bin", 21);
+	}
+	
+	step_completed = true;
 }
 
 void extract_package2()
 {
 	step_completed = false;
 	
-	FILE* BCPKG_21_f = fopen("/switch/kezplez-nx/BCPKG_21_NormalMain.bin", "rb");
-	FILE* PKG21_f = fopen("/switch/kezplez-nx/package2.bin", "wb");
-	
-	fread(BCPKG_21_DATA, BCPKG_21_SIZE, 1, BCPKG_21_f);
-	memcpy(PKG21_DATA, BCPKG_21_DATA + PKG21_BEGIN, PKG21_SIZE);
-	fwrite(PKG21_DATA, PKG21_SIZE, 1, PKG21_f);
-	
-	fclose(PKG21_f);
-	fclose(BCPKG_21_f);
+	if (!BCP21_FH)
+	{
+		FILE* BCPKG_21_f = fopen("/switch/kezplez-nx/BCPKG_21_NormalMain.bin", "rb");
+		FILE* PKG21_f = fopen("/switch/kezplez-nx/package2.bin", "wb");
+		
+		fread(BCPKG_21_DATA, BCPKG_21_SIZE, 1, BCPKG_21_f);
+		memcpy(PKG21_DATA, BCPKG_21_DATA + PKG21_BEGIN, PKG21_SIZE);
+		fwrite(PKG21_DATA, PKG21_SIZE, 1, PKG21_f);
+		
+		fclose(PKG21_f);
+		fclose(BCPKG_21_f);
+	}
 	
 	step_completed = true;
 	step_result = 0;
@@ -851,6 +956,7 @@ void derive_part1c()
 	step_completed = false;
 	
 	find_and_add_key(TZ_DATA, 0x08, TZ_SIZE);  //titlekek_source
+	free(TZ_DATA);
 	
 	step_result = 0;
 	step_completed = true;
@@ -866,18 +972,36 @@ void extract_package2_contents()
 	
 	hactool_init();
 	
-	tool_ctx.file = fopen("/switch/kezplez-nx/package2.bin", "rb");
-	tool_ctx.file_type = FILETYPE_PACKAGE2;
-	filepath_set(&tool_ctx.settings.pk21_dir_path, "/switch/kezplez-nx/package2\0");
-	filepath_set(&tool_ctx.settings.ini1_dir_path, "/switch/kezplez-nx/ini1\0");
-	
-	pk21_ctx_t pk21_ctx;
-	memset(&pk21_ctx, 0, sizeof(pk21_ctx));
-	pk21_ctx.file = tool_ctx.file;
-	pk21_ctx.tool_ctx = &tool_ctx;
-	pk21_process(&pk21_ctx);
-	if (pk21_ctx.sections) {
-		free(pk21_ctx.sections);
+	if (BCP21_FH)
+	{
+		tool_ctx.file = fopen("/switch/kezplez-nx/package2/INI1.bin", "rb");
+		tool_ctx.file_type = FILETYPE_INI1;
+		filepath_set(&tool_ctx.settings.ini1_dir_path, "/switch/kezplez-nx/ini1\0");
+		
+		ini1_ctx_t ini1_ctx;
+		memset(&ini1_ctx, 0, sizeof(ini1_ctx));
+		ini1_ctx.file = tool_ctx.file;
+		ini1_ctx.tool_ctx = &tool_ctx;
+		ini1_process(&ini1_ctx);
+		if (ini1_ctx.header) {
+			free(ini1_ctx.header);
+		}
+	}
+	else
+	{
+		tool_ctx.file = fopen("/switch/kezplez-nx/package2.bin", "rb");
+		tool_ctx.file_type = FILETYPE_PACKAGE2;
+		filepath_set(&tool_ctx.settings.pk21_dir_path, "/switch/kezplez-nx/package2\0");
+		filepath_set(&tool_ctx.settings.ini1_dir_path, "/switch/kezplez-nx/ini1\0");
+		
+		pk21_ctx_t pk21_ctx;
+		memset(&pk21_ctx, 0, sizeof(pk21_ctx));
+		pk21_ctx.file = tool_ctx.file;
+		pk21_ctx.tool_ctx = &tool_ctx;
+		pk21_process(&pk21_ctx);
+		if (pk21_ctx.sections) {
+			free(pk21_ctx.sections);
+		}
 	}
 	
 	fclose(tool_ctx.file);
@@ -1241,13 +1365,13 @@ int main(int argc, char** argv)
 	
 	
 	//cleanup
-	socketExit();
+	//socketExit();
 	gui_exit();
 	// if (curl)
 	// {
 		// free(chunk.memory);
 	// }
 	
-	if (TZ_DATA != NULL) { free(TZ_DATA); }
+	//if (TZ_DATA != NULL) { free(TZ_DATA); }
 	return 0;
 }

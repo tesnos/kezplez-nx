@@ -5,29 +5,33 @@
 #include "cJSON.h"
 
 void ini1_process(ini1_ctx_t *ctx) {
+	// FILE* inierr_f = fopen("/switch/kezplez-nx/ini1err.txt", "wb");
+	// fwrite("strt\n", 5, 1, inierr_f);
+	// fflush(inierr_f);
+	
     /* Read *just* safe amount. */
     ini1_header_t raw_header; 
     fseeko64(ctx->file, 0, SEEK_SET);
     if (fread(&raw_header, 1, sizeof(raw_header), ctx->file) != sizeof(raw_header)) {
-        fprintf(stderr, "Failed to read INI1 header!\n");
-        exit(EXIT_FAILURE);
+        // fwrite("head\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
     }
     
     if (raw_header.magic != MAGIC_INI1 || raw_header.num_processes > INI1_MAX_KIPS) {
-        printf("Error: INI1 is corrupt!\n");
-        exit(EXIT_FAILURE);
+		// fwrite("corr\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
     }
 
     ctx->header = malloc(raw_header.size);
     if (ctx->header == NULL) {
-        fprintf(stderr, "Failed to allocate INI1 header!\n");
-        exit(EXIT_FAILURE);
+		// fwrite("allc\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
     }
     
     fseeko64(ctx->file, 0, SEEK_SET);
     if (fread(ctx->header, 1, raw_header.size, ctx->file) != raw_header.size) {
-        fprintf(stderr, "Failed to read INI1!\n");
-        exit(EXIT_FAILURE);
+		// fwrite("read\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
     }
     
     uint64_t offset = 0;
@@ -35,19 +39,16 @@ void ini1_process(ini1_ctx_t *ctx) {
         ctx->kips[i].tool_ctx = ctx->tool_ctx;
         ctx->kips[i].header = (kip1_header_t *)&ctx->header->kip_data[offset];
         if (ctx->kips[i].header->magic != MAGIC_KIP1) {
-            fprintf(stderr, "INI1 is corrupted!\n");
-            exit(EXIT_FAILURE);
+			// fwrite("cor2\n", 5, 1, inierr_f);
+            // fflush(inierr_f);
         }
         offset += kip1_get_size(&ctx->kips[i]);
     }
     
-    if (ctx->tool_ctx->action & ACTION_INFO) {
-        ini1_print(ctx);
-    }
     
-    if (ctx->tool_ctx->action & ACTION_EXTRACT) {
-        ini1_save(ctx);
-    }
+	// fwrite("done\n", 5, 1, inierr_f);
+    // fclose(inierr_f);
+    ini1_save(ctx);
 }
 
 void ini1_print(ini1_ctx_t *ctx) {
