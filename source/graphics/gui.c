@@ -10,7 +10,7 @@ void gui_init()
 	graphics_init();
 	//flag_colors_num = 6;
 	//flag_colors[flag_colors_num] = {COL_RED, COL_ORANGE, COL_YELLOW, COL_GREEN, COL_BLUE, COL_VIOLET};
-	testimg = graphics_loadpng("/bluegrad.png");
+	//testimg = graphics_loadpng("/bluegrad.png");
 }
 
 void gui_fillscreen(u32 fillcolor)
@@ -74,6 +74,6 @@ void gui_blankframe()
 
 void gui_exit()
 {
-	graphics_freeimage(testimg);
+	//graphics_freeimage(testimg);
 	graphics_exit();
 }
