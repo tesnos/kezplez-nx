@@ -2,12 +2,12 @@
 
 
 #ifdef LOGGING_ENABLED
-const char log_path[] = "/switch/kezplez-nx/log.txt\0";
+const char log_path[256] = "/switch/kezplez-nx/log.txt\0";
 #endif
 
-const char keyfile_path[] = "/switch/kezplez-nx/keys.txt\0";
-const char hekate_fusedump_path[] = "/Backup/Dumps/fuses.bin\0";
-const char hekate_tsecdump_path[] = "/Backup/Dumps/tsec_key.bin\0";
+const char keyfile_path[256] = "/switch/kezplez-nx/keys.txt\0";
+const char hekate_fusedump_path[256] = "/Backup/Dumps/fuses.bin\0";
+const char hekate_tsecdump_path[256] = "/Backup/Dumps/tsec_key.bin\0";
 
 
 Thread* util_thread_func(void (*func)(application_ctx*), application_ctx* appstate)

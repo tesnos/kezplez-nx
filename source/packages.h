@@ -21,26 +21,26 @@
 
 
 //package1
-extern const char boot0_path[];
-extern const char package1_dir_path[];
-extern const char package1_path[];
-extern const char hekate_boot0_path[];
+extern const char boot0_path[256];
+extern const char package1_dir_path[256];
+extern const char package1_path[256];
+extern const char hekate_boot0_path[256];
 
 //package2
-extern const char bcpkg_21_path[];
+extern const char bcpkg_21_path[256];
 extern const char package2_dir_path[];
-extern const char package2_path[];
+extern const char package2_path[256];
 
 
-extern const char hekate_package2_decrypted_path[];
-extern const char package2_decrypted_path[];
+extern const char hekate_package2_decrypted_path[256];
+extern const char package2_decrypted_path[256];
 
-extern const char hekate_package2_ini1_path[];
-extern const char package2_ini1_path[];
-extern const char package2_ini1_dir_path[];
+extern const char hekate_package2_ini1_path[256];
+extern const char package2_ini1_path[256];
+extern const char package2_ini1_dir_path[256];
 
-extern const char hekate_package2_kernel_path[];
-extern const char package2_kernel_path[];
+extern const char hekate_package2_kernel_path[256];
+extern const char package2_kernel_path[256];
 
 
 /**

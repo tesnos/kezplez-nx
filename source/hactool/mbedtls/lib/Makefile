@@ -12,8 +12,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 # Also see "include/mbedtls/config.h"
 
 ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
-CFLAGS	:=  -g -Wall -O2 -ffunction-sections $(ARCH) $(DEFINES) -I ../include
-CFLAGS	+=	$(INCLUDE) -D__SWITCH__
+CFLAGS	:=  -g -Wall -O2 -ffunction-sections $(ARCH) $(DEFINES) 
+CFLAGS	+=	-I ../include -D__SWITCH__
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS ?= -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
@@ -85,7 +85,7 @@ libmbedcrypto.a: $(OBJS_CRYPTO)
 
 .c.o:
 	echo "  CC    $<"
-	$(CC) $(LDFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(LDFLAGS) -c $<
 
 clean:
 	rm -f *.o libmbed*

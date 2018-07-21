@@ -1,8 +1,8 @@
 #include "derivation.h"
 
 
-const char secmon_path[] = "/switch/kezplez-nx/package1/Secure_Monitor.bin\0";
-const char final_keyfile_path[] = "/prod.keys\0";
+const char secmon_path[256] = "/switch/kezplez-nx/package1/Secure_Monitor.bin\0";
+const char final_keyfile_path[256] = "/prod.keys\0";
 
 
 void derive_part0(application_ctx* appstate)

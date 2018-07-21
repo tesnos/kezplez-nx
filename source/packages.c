@@ -1,21 +1,21 @@
 #include "packages.h"
 
 
-const char boot0_path[] = "/switch/kezplez-nx/boot0.bin\0";
-const char package1_dir_path[] = "/switch/kezplez-nx/package1\0";
-const char package1_path[] = "/switch/kezplez-nx/package1.bin\0";
-const char hekate_boot0_path[] = "/Backup/BOOT0\0";
-const char bcpkg_21_path[] = "/switch/kezplez-nx/BCPKG_21_NormalMain.bin\0";
-const char package2_dir_path[] = "/switch/kezplez-nx/package2\0";
-const char package2_path[] = "/switch/kezplez-nx/package2.bin\0";
-const char hekate_package2_decrypted_path[] = "/Backup/pkg2/pkg2_decr.bin\0";
-const char package2_decrypted_path[] = "/switch/kezplez-nx/package2/Decrypted.bin\0";
-const char hekate_package2_ini1_path[] = "/Backup/pkg2/ini1.bin\0";
-const char package2_ini1_path[] = "/switch/kezplez-nx/package2/INI1.bin\0";
-const char package2_ini1_dir_path[] = "/switch/kezplez-nx/ini1\0";
+const char boot0_path[256] = "/switch/kezplez-nx/boot0.bin\0";
+const char package1_dir_path[256] = "/switch/kezplez-nx/package1\0";
+const char package1_path[256] = "/switch/kezplez-nx/package1.bin\0";
+const char hekate_boot0_path[256] = "/Backup/BOOT0\0";
+const char bcpkg_21_path[256] = "/switch/kezplez-nx/BCPKG_21_NormalMain.bin\0";
+const char package2_dir_path[256] = "/switch/kezplez-nx/package2\0";
+const char package2_path[256] = "/switch/kezplez-nx/package2.bin\0";
+const char hekate_package2_decrypted_path[256] = "/Backup/pkg2/pkg2_decr.bin\0";
+const char package2_decrypted_path[256] = "/switch/kezplez-nx/package2/Decrypted.bin\0";
+const char hekate_package2_ini1_path[256] = "/Backup/pkg2/ini1.bin\0";
+const char package2_ini1_path[256] = "/switch/kezplez-nx/package2/INI1.bin\0";
+const char package2_ini1_dir_path[256] = "/switch/kezplez-nx/ini1\0";
 
-const char hekate_package2_kernel_path[] = "/Backup/pkg2/kernel.bin\0";
-const char package2_kernel_path[] = "/switch/kezplez-nx/package2/Kernel.bin\0";
+const char hekate_package2_kernel_path[256] = "/Backup/pkg2/kernel.bin\0";
+const char package2_kernel_path[256] = "/switch/kezplez-nx/package2/Kernel.bin\0";
 
 
 void dump_bis_partition(const char* filepath, u32 partition_id)

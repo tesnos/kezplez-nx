@@ -150,7 +150,7 @@ endif
 all: $(BUILD)
 
 $(BUILD):
-	$(MAKE) -e -C source/hactool/mbedtls/lib all
+	$(MAKE) -C source/hactool/mbedtls/lib all
 	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 

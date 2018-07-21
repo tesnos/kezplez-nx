@@ -1,11 +1,11 @@
 #include "kip.h"
 
 
-const char spl_path[] = "/switch/kezplez-nx/ini1/spl.kip1\0";
-const char decompressed_spl_path[] = "/switch/kezplez-nx/ini1/decomp_spl.kip1\0";
+const char spl_path[256] = "/switch/kezplez-nx/ini1/spl.kip1\0";
+const char decompressed_spl_path[256] = "/switch/kezplez-nx/ini1/decomp_spl.kip1\0";
 
-const char FS_path[] = "/switch/kezplez-nx/ini1/FS.kip1\0";
-const char decompressed_FS_path[] = "/switch/kezplez-nx/ini1/decomp_FS.kip1\0";
+const char FS_path[256] = "/switch/kezplez-nx/ini1/FS.kip1\0";
+const char decompressed_FS_path[256] = "/switch/kezplez-nx/ini1/decomp_FS.kip1\0";
 
 
 

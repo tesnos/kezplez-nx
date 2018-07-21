@@ -5,11 +5,11 @@
 #include "keys.h"
 
 
-extern const char spl_path[];
-extern const char decompressed_spl_path[];
+extern const char spl_path[256];
+extern const char decompressed_spl_path[256];
 
-extern const char FS_path[];
-extern const char decompressed_FS_path[];
+extern const char FS_path[256];
+extern const char decompressed_FS_path[256];
 
 
 /**

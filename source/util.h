@@ -24,12 +24,12 @@
 
 //#define LOGGING_ENABLED
 #ifdef LOGGING_ENABLED
-extern const char log_path[];
+extern const char log_path[256];
 #endif
 
-extern const char keyfile_path[];
-extern const char hekate_fusedump_path[];
-extern const char hekate_tsecdump_path[];
+extern const char keyfile_path[256];
+extern const char hekate_fusedump_path[256];
+extern const char hekate_tsecdump_path[256];
 
 
 typedef struct
@@ -120,6 +120,6 @@ void debug_log_toscreen(application_ctx* appstate, char* log_text, ...);
  * @param print_text The text to log
  * @param ... Format specifiers (such as printf)
  */
-void debug_log(application_ctx* appstate, char* log_text, ...);
+void debug_log(char* log_text, ...);
 
 #endif

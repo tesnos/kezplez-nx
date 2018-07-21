@@ -4,8 +4,8 @@
 #include "util.h"
 #include "keys.h"
 
-extern const char secmon_path[];
-extern const char final_keyfile_path[];
+extern const char secmon_path[256];
+extern const char final_keyfile_path[256];
 
 
 /**
