@@ -5,7 +5,7 @@
 
 #include "util.h"
 
-#include "hactool/settings.h"
+#include "settings.h"
 
 
 extern const char nokey[6];

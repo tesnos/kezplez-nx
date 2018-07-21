@@ -4,6 +4,8 @@
 #include "util.h"
 #include "keys.h"
 
+#include "pki.h"
+
 extern const char secmon_path[256];
 extern const char final_keyfile_path[256];
 

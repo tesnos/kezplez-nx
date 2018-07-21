@@ -1,343 +1,322 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
 #include "packages.h"
+#include "aes.h"
+#include "rsa.h"
+#include "sha.h"
 
+int pk11_process(pk11_ctx_t *ctx) {
+    fseeko64(ctx->file, 0, SEEK_SET);
+    if (fread(&ctx->stage1, 1, sizeof(ctx->stage1), ctx->file) != sizeof(ctx->stage1)) {
+        //fprintf(stderr, "Failed to read PK11 Stage 1!\n");
+        //exit(EXIT_FAILURE);
+		return 1;
+    }
+    
+    /* Check if PK11 was built in 2016. */
+    /* This is a heuristic to detect an older layout for the PK11 binary. */
+    if (ctx->stage1.build_date[0] == '2' && ctx->stage1.build_date[1] == '0' && ctx->stage1.build_date[2] == '1' && ctx->stage1.build_date[3] == '6') {
+        ctx->is_pilot = 1;
+    } else {
+        ctx->is_pilot = 0;
+    }
+    
+    ctx->pk11 = malloc(ctx->stage1.pk11_size);
+    if (ctx->pk11 == NULL) {
+        // fprintf(stderr, "Failed to allocate PK11!\n");
+        // exit(EXIT_FAILURE);
+		return 2;
+    }
+    
+    if (fread(ctx->pk11, 1, ctx->stage1.pk11_size, ctx->file) != ctx->stage1.pk11_size) {
+        // fprintf(stderr, "Failed to read PK11!\n");
+        // exit(EXIT_FAILURE);
+		return 3;
+    }
+    
+    aes_ctx_t *crypt_ctx = NULL;
+    pk11_t dec_header;
+    for (unsigned int i = 0; i < 0x20; i++) {
+        ctx->key_rev = i;
+        crypt_ctx = new_aes_ctx(&ctx->tool_ctx->settings.keyset.package1_keys[i], 0x10, AES_MODE_CTR);
+        aes_setiv(crypt_ctx, ctx->stage1.ctr, 0x10);
+        aes_decrypt(crypt_ctx, &dec_header, ctx->pk11, sizeof(dec_header));
+        if (dec_header.magic == MAGIC_PK11) {
+            break;
+        }
+        free_aes_ctx(crypt_ctx);
+        crypt_ctx = NULL;
+    }
+    
+    if (crypt_ctx == NULL) {
+        // fprintf(stderr, "Failed to decrypt PK11! Is correct key present?\n");
+        // exit(EXIT_FAILURE);
+		return 5;
+    }
+    
+    aes_setiv(crypt_ctx, ctx->stage1.ctr, 0x10);
+    aes_decrypt(crypt_ctx, ctx->pk11, ctx->pk11, ctx->stage1.pk11_size);
+    
+    uint64_t pk11_size = 0x20 + ctx->pk11->warmboot_size + ctx->pk11->nx_bootloader_size + ctx->pk11->secmon_size;
+    pk11_size = align64(pk11_size, 0x10);
+    if (pk11_size != ctx->stage1.pk11_size) {
+        // fprintf(stderr, "PK11 seems corrupt!\n");
+        // exit(EXIT_FAILURE);
+		return 6;
+    }
 
-const char boot0_path[256] = "/switch/kezplez-nx/boot0.bin\0";
-const char package1_dir_path[256] = "/switch/kezplez-nx/package1\0";
-const char package1_path[256] = "/switch/kezplez-nx/package1.bin\0";
-const char hekate_boot0_path[256] = "/Backup/BOOT0\0";
-const char bcpkg_21_path[256] = "/switch/kezplez-nx/BCPKG_21_NormalMain.bin\0";
-const char package2_dir_path[256] = "/switch/kezplez-nx/package2\0";
-const char package2_path[256] = "/switch/kezplez-nx/package2.bin\0";
-const char hekate_package2_decrypted_path[256] = "/Backup/pkg2/pkg2_decr.bin\0";
-const char package2_decrypted_path[256] = "/switch/kezplez-nx/package2/Decrypted.bin\0";
-const char hekate_package2_ini1_path[256] = "/Backup/pkg2/ini1.bin\0";
-const char package2_ini1_path[256] = "/switch/kezplez-nx/package2/INI1.bin\0";
-const char package2_ini1_dir_path[256] = "/switch/kezplez-nx/ini1\0";
-
-const char hekate_package2_kernel_path[256] = "/Backup/pkg2/kernel.bin\0";
-const char package2_kernel_path[256] = "/switch/kezplez-nx/package2/Kernel.bin\0";
-
-
-void dump_bis_partition(const char* filepath, u32 partition_id)
-{
-	FILE* dumpfile = fopen(filepath, FMODE_WRITE);
-	FsStorage partition;
-	u64 partition_size, dump_progress, bytes_to_dump;
+    
+    pk11_save(ctx);
 	
-	debug_log("Opening bis storage partition of id %08x\n", partition_id);
-	Result rc = fsOpenBisStorage(&partition, partition_id);
-	if (R_FAILED(rc)) { debug_log("Failed to open partition of id %08x!\n", partition_id); return; }
-	
-	rc = fsStorageGetSize(&partition, &partition_size);
-	if (R_FAILED(rc)) { debug_log("Failed to get size of partition of id %08x!\n", partition_id);return; }
-	debug_log("Partition is %08x bytes large\n", partition_size);
-	
-	size_t dump_buffer_size = 0x10000;
-	u8 dump_buffer[dump_buffer_size];
-	
-	dump_progress = 0;
-	debug_log("Dumping partition (bytes dumped so far: %08x)\n", dump_progress);
-	while(dump_progress < partition_size)
-	{
-		if ((partition_size - dump_progress) > dump_buffer_size)
-		{
-			bytes_to_dump = dump_buffer_size;
-		}
-		else
-		{
-			bytes_to_dump = (partition_size - dump_progress);
-		}
-		
-		rc = fsStorageRead(&partition, dump_progress, dump_buffer, bytes_to_dump);
-		if (R_FAILED(rc)) { debug_log("Failed to read from partition of id %08x!\n", partition_id); return; }
-		
-		fwrite(dump_buffer, bytes_to_dump, 1, dumpfile);
-		
-		dump_progress += bytes_to_dump;
-		debug_log("Dumping partition (bytes dumped so far: %08x)\n", dump_progress);
-	}
-	
-	debug_log("Dump complete, closing partition\n");
-	fsStorageClose(&partition);
-	fclose(dumpfile);
+	return 0;
 }
 
-void dump_boot0(application_ctx* appstate)
-{
-	FILE* hekate_boot0_f = fopen(hekate_boot0_path, FMODE_READ);
-	if (hekate_boot0_f != NULL) { appstate->boot0_is_from_hekate = true; }
-	else { appstate->boot0_is_from_hekate = false; }
-	
-	if (appstate->boot0_is_from_hekate)
-	{
-		debug_log("BOOT0 was dumped via hekate so copying it from there\n");
-		FILE* real_boot0_f = fopen(boot0_path, FMODE_WRITE);
-		
-		fseek(hekate_boot0_f, 0, SEEK_END);
-		int boot0_temp_size = ftell(hekate_boot0_f);
-		fseek(hekate_boot0_f, 0, SEEK_SET);
-		
-		char* boot0_temp_buf = malloc(boot0_temp_size);
-		fread(boot0_temp_buf, boot0_temp_size, 1, hekate_boot0_f);
-		fwrite(boot0_temp_buf, boot0_temp_size, 1, real_boot0_f);
-		
-		fclose(real_boot0_f);
-		fclose(hekate_boot0_f);
-		free(boot0_temp_buf);
-	}
-	else
-	{
-		debug_log("Dumping BOOT0 via fs because it was not dumped from hekate\n");
-		dump_bis_partition(boot0_path, 0);
-	}
-	
-	debug_log("BOOT0 Dumped.\n");
+void pk11_print(pk11_ctx_t *ctx) {
+    printf("PK11:\n");
+    printf("    Build Date:                     %s\n", ctx->stage1.build_date);
+    memdump(stdout, "    Build Hash:                     ", ctx->stage1.build_hash, 0x10);
+    printf("    Key Revision:                   %02"PRIx32" (%s)\n", ctx->key_rev, get_key_revision_summary((uint8_t)ctx->key_rev));
+    printf("    PK11 Size:                      %08"PRIx32"\n", ctx->stage1.pk11_size);
+    printf("    Warmboot.bin Size:              %08"PRIx32"\n", ctx->pk11->warmboot_size);
+    printf("    NX_Bootloader.bin Size          %08"PRIx32"\n", ctx->pk11->nx_bootloader_size);
+    printf("    Secure_Monitor.bin Size:        %08"PRIx32"\n", ctx->pk11->secmon_size);
+    printf("\n");
 }
 
-void dump_bcpkg_21(application_ctx* appstate)
-{
-	FILE* hekate_pkg2_f = fopen(hekate_package2_decrypted_path, FMODE_READ);
-	FILE* hekate_ini1_f = fopen(hekate_package2_ini1_path, FMODE_READ);
-	FILE* hekate_kern_f = fopen(hekate_package2_kernel_path, FMODE_READ);
-	
-	if (hekate_pkg2_f != NULL && hekate_ini1_f != NULL && hekate_kern_f != NULL)
-	{
-		appstate->pkg2_is_from_hekate = true;
-	}
-	else
-	{
-		appstate->pkg2_is_from_hekate = false;
-		
-		if (hekate_pkg2_f != NULL) { fclose(hekate_pkg2_f); }
-		if (hekate_ini1_f != NULL) { fclose(hekate_ini1_f); }
-		if (hekate_kern_f != NULL) { fclose(hekate_kern_f); }
-	}
-	
-	
-	if (appstate->pkg2_is_from_hekate)
-	{
-		debug_log("package2 was dumped via hekate so copying it from there\n");
-		mkdir(package2_dir_path, 777);
-		
-		for (int i = 0; i < 3; i++)
-		{
-			FILE* target_f;
-			FILE* source_f;
-			
-			if (i == 0) { source_f = hekate_pkg2_f; }
-			if (i == 1) { source_f = hekate_ini1_f; }
-			if (i == 2) { source_f = hekate_kern_f; }
-			
-			if (i == 0) { target_f = fopen(package2_decrypted_path, FMODE_WRITE); }
-			if (i == 1) { target_f = fopen(package2_ini1_path, FMODE_WRITE); }
-			if (i == 2) { target_f = fopen(package2_kernel_path, FMODE_WRITE); }
-			
-			
-			fseek(source_f, 0, SEEK_END);
-			int temp_size = ftell(source_f);
-			fseek(source_f, 0, SEEK_SET);
-			
-			char* temp_buf = malloc(temp_size);
-			fread(temp_buf, temp_size, 1, source_f);
-			fwrite(temp_buf, temp_size, 1, target_f);
-			
-			fclose(target_f);
-			fclose(source_f);
-			free(temp_buf);
-		}
-	}
-	else
-	{
-		debug_log("Dumping package2 via fs because it was not dumped from hekate\n");
-		dump_bis_partition(bcpkg_21_path, 21);
-	}
-	
-	debug_log("package2 Dumped.\n");
+void pk11_save(pk11_ctx_t *ctx) {
+    /* Extract to directory. */
+    filepath_t *dirpath = NULL;
+    if (ctx->tool_ctx->file_type == FILETYPE_PACKAGE1 && ctx->tool_ctx->settings.out_dir_path.enabled) {
+        dirpath = &ctx->tool_ctx->settings.out_dir_path.path;
+    }
+    if (dirpath == NULL || dirpath->valid != VALIDITY_VALID) {
+        dirpath = &ctx->tool_ctx->settings.pk11_dir_path;
+    }
+    if (dirpath != NULL && dirpath->valid == VALIDITY_VALID) {
+        os_makedir(dirpath->os_path);
+        
+        /* Save Decrypted.bin */
+        printf("Saving decrypted binary to %s/Decrypted.bin\n", dirpath->char_path);
+        char *decrypted_bin = malloc(sizeof(ctx->stage1) + ctx->stage1.pk11_size);
+        if (decrypted_bin == NULL) {
+            fprintf(stderr, "Failed to allocate buffer!\n");
+            exit(EXIT_FAILURE);
+        }
+        memcpy(decrypted_bin, &ctx->stage1, sizeof(ctx->stage1));
+        memcpy(decrypted_bin + sizeof(ctx->stage1), ctx->pk11, ctx->stage1.pk11_size);
+        save_buffer_to_directory_file(decrypted_bin, sizeof(ctx->stage1) + ctx->stage1.pk11_size, dirpath, "Decrypted.bin");
+        free(decrypted_bin);
+        
+        /* Save Warmboot.bin */
+        printf("Saving Warmboot.bin to %s/Warmboot.bin...\n", dirpath->char_path);
+        save_buffer_to_directory_file(pk11_get_warmboot_bin(ctx), ctx->pk11->warmboot_size, dirpath, "Warmboot.bin");
+        
+        /* Save NX_Bootloader.bin */
+        printf("Saving NX_Bootloader.bin to %s/NX_Bootloader.bin...\n", dirpath->char_path);
+        save_buffer_to_directory_file(pk11_get_nx_bootloader(ctx), ctx->pk11->nx_bootloader_size, dirpath, "NX_Bootloader.bin");
+        
+        /* Save Secure_Monitor.bin */
+        printf("Saving Secure_Monitor.bin to %s/Secure_Monitor.bin...\n", dirpath->char_path);
+        save_buffer_to_directory_file(pk11_get_secmon(ctx), ctx->pk11->secmon_size, dirpath, "Secure_Monitor.bin");
+    }
 }
 
-void extract_package2(application_ctx* appstate)
-{
-	if (!appstate->pkg2_is_from_hekate)
-	{
-		debug_log("Extracting package2 from BCPKG_21 because it was not dumped from hekate\n");
-		FILE* BCPKG_21_f = fopen(bcpkg_21_path, FMODE_READ);
-		FILE* PKG21_f = fopen(package2_path, FMODE_WRITE);
-		
-		char PKG21_DATA[PKG21_SIZE];
-		char BCPKG_21_DATA[BCPKG_21_SIZE];
-		
-		fread(BCPKG_21_DATA, BCPKG_21_SIZE, 1, BCPKG_21_f);
-		memcpy(PKG21_DATA, BCPKG_21_DATA + PKG21_BEGIN, PKG21_SIZE);
-		fwrite(PKG21_DATA, PKG21_SIZE, 1, PKG21_f);
-		
-		fclose(PKG21_f);
-		fclose(BCPKG_21_f);
-		debug_log("Extraction complete.\n");
-	}
+void pk21_process(pk21_ctx_t *ctx) {    
+    fseeko64(ctx->file, 0, SEEK_SET);
+    if (fread(&ctx->header, 1, sizeof(ctx->header), ctx->file) != sizeof(ctx->header)) {
+        fprintf(stderr, "Failed to read PK21 Header!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    bool is_encrypted = false;
+    for (unsigned int i = 0; i < 0x100; i++) {
+        if (ctx->header.signature[i] != 0) {
+            is_encrypted = true;
+        }
+    }
+    is_encrypted &= ctx->header.magic != MAGIC_PK21;
+    
+    if (is_encrypted) {
+        if (rsa2048_pss_verify(&ctx->header.ctr, 0x100, ctx->header.signature, ctx->tool_ctx->settings.keyset.package2_fixed_key_modulus)) {
+            ctx->signature_validity = VALIDITY_VALID;
+        } else {
+            ctx->signature_validity = VALIDITY_INVALID;
+        }
+    } else {
+        ctx->signature_validity = VALIDITY_UNCHECKED;
+    }
+    
+    
+    /* Nintendo, what the fuck? */
+    ctx->package_size = ctx->header.ctr_dwords[0] ^ ctx->header.ctr_dwords[2] ^ ctx->header.ctr_dwords[3];
+    if (ctx->package_size > 0x7FC000) {
+        fprintf(stderr, "Error: Package2 Header is corrupt!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    aes_ctx_t *crypt_ctx = NULL;
+    if (is_encrypted) {
+        unsigned char ctr[0x10];
+        pk21_header_t temp_header;
+        memcpy(ctr, ctx->header.ctr, sizeof(ctr));
+        
+        for (unsigned int i = 0; i < 0x20; i++) {
+            ctx->key_rev = i;
+            memcpy(&temp_header, &ctx->header, sizeof(temp_header));
+            crypt_ctx = new_aes_ctx(&ctx->tool_ctx->settings.keyset.package2_keys[i], 0x10, AES_MODE_CTR);
+            aes_setiv(crypt_ctx, ctr, 0x10);
+            aes_decrypt(crypt_ctx, &temp_header.ctr[0], &temp_header.ctr[0], 0x100);
+            if (temp_header.magic == MAGIC_PK21) {
+                memcpy(&ctx->header, &temp_header, sizeof(temp_header));
+                memcpy(ctx->header.ctr, ctr, sizeof(ctr));
+                break;
+            }
+            free_aes_ctx(crypt_ctx);
+            crypt_ctx = NULL;
+        }
+        
+        if (crypt_ctx == NULL) {
+            fprintf(stderr, "Failed to decrypt PK21! Is correct key present?\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    
+    if (ctx->package_size != 0x200 + ctx->header.section_sizes[0] + ctx->header.section_sizes[1] + ctx->header.section_sizes[2]) {
+        fprintf(stderr, "Error: Package2 Header is corrupt!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    ctx->sections = malloc(ctx->package_size);
+    if (ctx->sections == NULL) {
+        fprintf(stderr, "Failed to allocate sections!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    if (fread(ctx->sections, 1, ctx->package_size - 0x200, ctx->file) != ctx->package_size - 0x200) {
+        fprintf(stderr, "Failed to read PK21 Sections!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    uint64_t offset = 0;
+    for (unsigned int i = 0; i < 3; i++) {
+        unsigned char calc_hash[0x20];
+        sha256_hash_buffer(calc_hash, ctx->sections + offset, ctx->header.section_sizes[i]);
+        if (memcmp(calc_hash, ctx->header.section_hashes[i], 0x20) == 0) {
+            ctx->section_validities[i] = VALIDITY_VALID;
+        } else {
+            ctx->section_validities[i] = VALIDITY_INVALID;
+        }
+        if (is_encrypted) {
+            aes_setiv(crypt_ctx, ctx->header.section_ctrs[i], 0x10);
+            aes_decrypt(crypt_ctx, ctx->sections + offset, ctx->sections + offset, ctx->header.section_sizes[i]);   
+        }
+        offset += ctx->header.section_sizes[i];
+    }
+    
+    ctx->ini1_ctx.tool_ctx = ctx->tool_ctx;
+    ctx->ini1_ctx.header = (ini1_header_t *)(ctx->sections + ctx->header.section_sizes[0]);
+    if (ctx->ini1_ctx.header->magic == MAGIC_INI1 && ctx->ini1_ctx.header->num_processes <= INI1_MAX_KIPS) {
+        offset = 0;
+        for (unsigned int i = 0; i < ctx->ini1_ctx.header->num_processes; i++) {
+            ctx->ini1_ctx.kips[i].tool_ctx = ctx->tool_ctx;
+            ctx->ini1_ctx.kips[i].header = (kip1_header_t *)&ctx->ini1_ctx.header->kip_data[offset];
+            if (ctx->ini1_ctx.kips[i].header->magic != MAGIC_KIP1) {
+                fprintf(stderr, "INI1 is corrupted!\n");
+                exit(EXIT_FAILURE);
+            }
+            offset += kip1_get_size(&ctx->ini1_ctx.kips[i]);
+        }
+    }
+    
+    if (ctx->tool_ctx->action & ACTION_EXTRACT) {
+        pk21_save(ctx);
+    }
 }
 
-void extract_package1_encrypted(application_ctx* appstate)
-{
-	debug_log("Extracting package1 from BOOT0, the wrong way\n");
-	FILE* BOOT0_f = fopen(boot0_path, FMODE_READ);
-	FILE* PKG11_f = fopen(package1_path, FMODE_WRITE);
-	
-	char PKG11_DATA[PKG11_SIZE];
-	char BOOT0_DATA[BOOT0_SIZE];
-	char* PKG11_LOC = NULL;
-	
-	fread(BOOT0_DATA, BOOT0_SIZE, 1, BOOT0_f);
-	
-	char* PKG11_SEARCH_BEGIN = BOOT0_DATA + 0x100000;
-	char* PKG11_SEARCH_END = BOOT0_DATA + 0x140000;
-	char* PKG11_SEARCH_POS = PKG11_SEARCH_BEGIN;
-	u32 PKG11_TARGET_STR_BE = 0x504B3131;
-	u32 PKG11_TARGET_STR_LE = 0x31314B50;
-	
-	debug_log("Searching for target string PK11...");
-	
-	for (; PKG11_SEARCH_POS < PKG11_SEARCH_END; PKG11_SEARCH_POS += 4)
-	{
-		u32 PKG11_TARGET_TEST = *((u32*) PKG11_SEARCH_POS);
-		if (PKG11_TARGET_TEST == PKG11_TARGET_STR_BE || PKG11_TARGET_TEST == PKG11_TARGET_STR_LE)
-		{
-			PKG11_LOC = PKG11_SEARCH_POS;
-			debug_log("Found!\n");
-			break;
-		}
-	}
-	if (PKG11_SEARCH_POS >= PKG11_SEARCH_END) { debug_log("Not Found! Is BOOT0 corrupt?\n"); }
-	
-	memcpy(PKG11_DATA, PKG11_LOC, PKG11_SIZE);
-	fwrite(PKG11_DATA, PKG11_SIZE, 1, PKG11_f);
-	
-	fclose(PKG11_f);
-	fclose(BOOT0_f);
-	
-	debug_log("Extraction complete.\n");
+const char *pk21_get_section_name(int section) {
+    switch (section) {
+        case 0: return "Kernel";
+        case 1: return "INI1";
+        case 2: return "Empty";
+        default: return "Unknown";
+    }
 }
 
-void extract_package1_encrypted_butagain(application_ctx* appstate)
-{
-	debug_log("Extracting package1 from BOOT0, the right way\n");
-	
-	FILE* BOOT0_f = fopen(boot0_path, FMODE_READ);
-	FILE* PKG11_f = fopen(package1_path, FMODE_WRITE);
-	
-	char PKG11_DATA[PKG11_SIZE];
-	char BOOT0_DATA[BOOT0_SIZE];
-	
-	fread(BOOT0_DATA, BOOT0_SIZE, 1, BOOT0_f);
-	memcpy(PKG11_DATA, BOOT0_DATA + PKG11_REALBEGIN, PKG11_SIZE);
-	fwrite(PKG11_DATA, PKG11_SIZE, 1, PKG11_f);
-	
-	fclose(PKG11_f);
-	fclose(BOOT0_f);
-	
-	debug_log("Extraction complete.\n");
+void pk21_print(pk21_ctx_t *ctx) {
+    printf("PK21:\n");
+    if (ctx->tool_ctx->action & ACTION_VERIFY && ctx->signature_validity != VALIDITY_UNCHECKED) {
+        if (ctx->signature_validity == VALIDITY_VALID) {
+            memdump(stdout, "    Signature (GOOD):               ", &ctx->header.signature, 0x100);
+        } else {
+            memdump(stdout, "    Signature (FAIL):               ", &ctx->header.signature, 0x100);
+        }
+    } else {
+        memdump(stdout, "    Signature:                      ", &ctx->header.signature, 0x100);
+    }
+    
+    /* What the fuck? */
+    printf("    Header Version:                 %02"PRIx32"\n", (ctx->header.ctr_dwords[1] ^ (ctx->header.ctr_dwords[1] >> 16) ^ (ctx->header.ctr_dwords[1] >> 24)) & 0xFF);
+    
+    for (unsigned int i = 0; i < 3; i++) {
+        printf("    Section %"PRId32" (%s):\n", i, pk21_get_section_name(i));
+        if (ctx->tool_ctx->action & ACTION_VERIFY) {
+            if (ctx->section_validities[i] == VALIDITY_VALID) {
+                memdump(stdout, "        Hash (GOOD):                ", ctx->header.section_hashes[i], 0x20);
+            } else {
+                memdump(stdout, "        Hash (FAIL):                ", ctx->header.section_hashes[i], 0x20);
+            }
+        } else {
+            memdump(stdout, "        Hash:                       ", ctx->header.section_hashes[i], 0x20);
+        }
+        memdump(stdout, "        CTR:                        ", ctx->header.section_ctrs[i], 0x20);
+        printf("        Load Address:               %08"PRIx32"\n", ctx->header.section_offsets[i] + 0x80000000);
+        printf("        Size:                       %08"PRIx32"\n", ctx->header.section_sizes[i]);
+    }
+    
+    printf("\n");
+    ini1_print(&ctx->ini1_ctx);
 }
 
-void decrypt_package1(application_ctx* appstate)
-{
-	debug_log("Decrypting package1...\n");
-	hactool_init(appstate);
-	hactool_ctx_t tool_ctx = *(&appstate->tool_ctx);
-	tool_ctx.file = fopen(boot0_path, FMODE_READ);
-	
-	debug_log("Retrieving keyblobs from boot0...\n");
-	nca_keyset_t new_keyset;
-	memcpy(&new_keyset, &tool_ctx.settings.keyset, sizeof(new_keyset));
-	for (unsigned int i = 0; i < 0x10; i++) {
-		if (tool_ctx.settings.keygen_sbk[i] != 0) {
-			memcpy(new_keyset.secure_boot_key, tool_ctx.settings.keygen_sbk, 0x10);
-		}
-	}
-	for (unsigned int i = 0; i < 0x10; i++) {
-		if (tool_ctx.settings.keygen_tsec[i] != 0) {
-			memcpy(new_keyset.tsec_key, tool_ctx.settings.keygen_tsec, 0x10);
-		}
-	}
-	for (unsigned int i = 0; tool_ctx.file != NULL && i < 0x20; i++) {
-		fseek(tool_ctx.file, 0x180000 + 0x200 * i, SEEK_SET);
-		fread(&new_keyset.encrypted_keyblobs[i], sizeof(new_keyset.encrypted_keyblobs[i]), 1, tool_ctx.file);
-	}
-	
-	debug_log("Keyblobs obtained, deriving all possible keys...\n");
-	pki_derive_keys(&new_keyset);
-	debug_log("Saving newly obtained keys...\n");
-	update_keyfile(0, &new_keyset);
-	
-	fclose(tool_ctx.file);
-	
-	//actual package1 decryption
-	debug_log("Preparing for package1 decryption...\n");
-	hactool_init(appstate);
-	tool_ctx.file = fopen(package1_path, FMODE_READ);
-	tool_ctx.file_type = FILETYPE_PACKAGE1;
-	filepath_set(&tool_ctx.settings.pk11_dir_path, package1_dir_path);
-	
-	pk11_ctx_t pk11_ctx;
-	memset(&pk11_ctx, 0, sizeof(pk11_ctx));
-	pk11_ctx.file = tool_ctx.file;
-	pk11_ctx.tool_ctx = &tool_ctx;
-	debug_log("Decrypting package1...\n");
-	pk11_process(&pk11_ctx);
-	
-	if (pk11_ctx.pk11) {
-		free(pk11_ctx.pk11);
-	}
-	
-	fclose(tool_ctx.file);
-	debug_log("Package1 Decrypted!\n");
-}
-
-void extract_package2_contents(application_ctx* appstate)
-{
-	debug_log("Extracting package2...\n");
-	hactool_ctx_t tool_ctx = *(&appstate->tool_ctx);
-	
-	hactool_init(appstate);
-	pki_derive_keys(&tool_ctx.settings.keyset);
-	update_keyfile(1, &tool_ctx.settings.keyset);
-	
-	hactool_init(appstate);
-	
-	if (appstate->pkg2_is_from_hekate)
-	{
-		debug_log("Package2 was from hekate, so doing ini1 extraction instead\n");
-		tool_ctx.file = fopen(package2_ini1_path, FMODE_READ);
-		tool_ctx.file_type = FILETYPE_INI1;
-		filepath_set(&tool_ctx.settings.ini1_dir_path, package2_ini1_dir_path);
-		
-		ini1_ctx_t ini1_ctx;
-		memset(&ini1_ctx, 0, sizeof(ini1_ctx));
-		ini1_ctx.file = tool_ctx.file;
-		ini1_ctx.tool_ctx = &tool_ctx;
-		debug_log("Extracting INI1...");
-		ini1_process(&ini1_ctx);
-		if (ini1_ctx.header) {
-			free(ini1_ctx.header);
-		}
-	}
-	else
-	{
-		debug_log("Package2 was not from hekate, so doing full extraction\n");
-		tool_ctx.file = fopen(package2_path, FMODE_READ);
-		tool_ctx.file_type = FILETYPE_PACKAGE2;
-		filepath_set(&tool_ctx.settings.pk21_dir_path, package2_dir_path);
-		filepath_set(&tool_ctx.settings.ini1_dir_path, package2_ini1_dir_path);
-		
-		pk21_ctx_t pk21_ctx;
-		memset(&pk21_ctx, 0, sizeof(pk21_ctx));
-		pk21_ctx.file = tool_ctx.file;
-		pk21_ctx.tool_ctx = &tool_ctx;
-		debug_log("Extracting package2...");
-		pk21_process(&pk21_ctx);
-		if (pk21_ctx.sections) {
-			free(pk21_ctx.sections);
-		}
-	}
-	
-	fclose(tool_ctx.file);
-	debug_log("Extraction Complete!");
+void pk21_save(pk21_ctx_t *ctx) {
+    /* Extract to directory. */
+    filepath_t *dirpath = NULL;
+    if (ctx->tool_ctx->file_type == FILETYPE_PACKAGE2 && ctx->tool_ctx->settings.out_dir_path.enabled) {
+        dirpath = &ctx->tool_ctx->settings.out_dir_path.path;
+    }
+    if (dirpath == NULL || dirpath->valid != VALIDITY_VALID) {
+        dirpath = &ctx->tool_ctx->settings.pk21_dir_path;
+    }
+    if (dirpath != NULL && dirpath->valid == VALIDITY_VALID) {
+        os_makedir(dirpath->os_path);
+        
+        /* Save Decrypted.bin */
+        printf("Saving decrypted binary to %s/Decrypted.bin\n", dirpath->char_path);
+        char *decrypted_bin = malloc(ctx->package_size);
+        if (decrypted_bin == NULL) {
+            fprintf(stderr, "Failed to allocate buffer!\n");
+            exit(EXIT_FAILURE);
+        }
+        memcpy(decrypted_bin, &ctx->header, 0x200);
+        memcpy(decrypted_bin + sizeof(ctx->header), ctx->sections, ctx->package_size - 0x200);
+        save_buffer_to_directory_file(decrypted_bin, ctx->package_size, dirpath, "Decrypted.bin");
+        free(decrypted_bin);
+        
+        /* Save Kernel.bin */
+        printf("Saving Kernel.bin to %s/Kernel.bin...\n", dirpath->char_path);
+        save_buffer_to_directory_file(ctx->sections, ctx->header.section_sizes[0], dirpath, "Kernel.bin");
+        
+        /* Save INI1.bin */
+        printf("Saving INI1.bin to %s/INI1.bin...\n", dirpath->char_path);
+        save_buffer_to_directory_file(ctx->sections +  ctx->header.section_sizes[0], ctx->header.section_sizes[1], dirpath, "INI1.bin");
+    }
+    if (ctx->ini1_ctx.header != NULL && (ctx->tool_ctx->action & ACTION_EXTRACTINI1 || ctx->tool_ctx->settings.ini1_dir_path.valid == VALIDITY_VALID)) {
+        filepath_t *ini1_dirpath = &ctx->tool_ctx->settings.ini1_dir_path;
+        if (ini1_dirpath->valid != VALIDITY_VALID && dirpath != NULL && dirpath->valid == VALIDITY_VALID) {
+            filepath_copy(ini1_dirpath, dirpath);
+            filepath_append(ini1_dirpath, "INI1");
+        }
+        ini1_save(&ctx->ini1_ctx);
+    }
 }

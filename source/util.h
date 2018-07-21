@@ -7,10 +7,10 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-#include "hactool/extkeys.h"
-#include "hactool/nca.h"
-#include "hactool/pki.h"
-#include "hactool/types.h"
+#include "extkeys.h"
+#include "nca.h"
+#include "pki.h"
+#include "types.h"
 
 
 #define FMODE_READ   "rb"
@@ -80,7 +80,7 @@ void util_thread_wrapper(void (*func)(application_ctx*), application_ctx* appsta
  * 
  * @return Unsigned 32-bit integer composed of the read bytes, in little endian
  */
-u32 read_i32_le(FILE* targetfile);
+u32 read_u32_le(FILE* targetfile);
 
 /**
  * @brief Reads 4 bytes from targetfile and returns their value as a big endian, unsigned 32-bit integer

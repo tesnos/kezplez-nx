@@ -1,235 +1,207 @@
+#include <string.h>
+#include <stdio.h>
 #include "kip.h"
+#include "npdm.h"
+#include "cJSON.h"
 
+void ini1_process(ini1_ctx_t *ctx) {
+	// FILE* inierr_f = fopen("/switch/kezplez-nx/ini1err.txt", "wb");
+	// fwrite("strt\n", 5, 1, inierr_f);
+	// fflush(inierr_f);
+	
+    /* Read *just* safe amount. */
+    ini1_header_t raw_header; 
+    fseeko64(ctx->file, 0, SEEK_SET);
+    if (fread(&raw_header, 1, sizeof(raw_header), ctx->file) != sizeof(raw_header)) {
+        // fwrite("head\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
+    }
+    
+    if (raw_header.magic != MAGIC_INI1 || raw_header.num_processes > INI1_MAX_KIPS) {
+		// fwrite("corr\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
+    }
 
-const char spl_path[256] = "/switch/kezplez-nx/ini1/spl.kip1\0";
-const char decompressed_spl_path[256] = "/switch/kezplez-nx/ini1/decomp_spl.kip1\0";
-
-const char FS_path[256] = "/switch/kezplez-nx/ini1/FS.kip1\0";
-const char decompressed_FS_path[256] = "/switch/kezplez-nx/ini1/decomp_FS.kip1\0";
-
-
-
-//so it turns out I do have to know how to do this now
-char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, int* decompdata_size)
-{
-	debug_log("reading compressed data into memory...\n");
-	u8* compressed = malloc(compdata_size);
-	fseek(has_compdata, compdata_off, SEEK_SET);
-	fread(compressed, compdata_size, 1, has_compdata);
-	
-	int total = compdata_off + compdata_size - 0x0C;
-	debug_log("obtaining info about compressed data...\n");
-	debug_log("compdata_off:%08x, compdata_size:%08x, total:%08x\n", compdata_off, compdata_size, total);
-	
-	fseek(has_compdata, 0, SEEK_SET);
-	fseek(has_compdata, total, SEEK_SET);
-	
-	int loc = ftell(has_compdata);
-	debug_log("loc:%08x\n", loc);
-	
-	u32 compressed_size = read_i32_le(has_compdata);
-	u32 init_index = read_i32_le(has_compdata);
-	u32 uncompressed_addl_size = read_i32_le(has_compdata);
-	
-	loc = ftell(has_compdata);
-	debug_log("loc:%08x\n", loc);
-	debug_log("compressed_size:%08x, init_index:%08x, uncompressed_addl_size:%08x\n", compressed_size, init_index, uncompressed_addl_size);
-	
-	debug_log("creating decompression buffer...\n");
-	
-	int decompressed_size = compressed_size + uncompressed_addl_size;
-	*decompdata_size = decompressed_size;
-	char* decompressed = malloc(decompressed_size);
-	if (compdata_size != compressed_size)
-	{
-		memcpy(decompressed, compressed + (compdata_size - compressed_size), compressed_size);
-	}
-	else
-	{
-		memcpy(decompressed, compressed, compressed_size);
-	}
-	
-	int index = compressed_size - init_index;
-	int outindex = decompressed_size;
-	debug_log("decompressing...\n");
-
-	while (outindex > 0)
-	{
-		index--;
-		u8 control = (u8) compressed[index];
-		for (int i = 0; i < 8; i++)
-		{
-			if (control & 0x80)
-			{
-				if (index < 2) { debug_log("ERR: Compression out of bounds! (case 0)\n"); }
-				index -= 2;
-				int segmentoffset = compressed[index] | (compressed[index + 1] << 8);
-				int segmentsize = ((segmentoffset >> 12) & 0xF) + 3;
-				segmentoffset = segmentoffset & 0x0FFF;
-				segmentoffset += 2;
-				if (outindex < segmentsize) { debug_log("ERR: Compression out of bounds! (case 1)\n"); }
-				for (int j = 0; j < segmentsize; j++)
-				{
-					if (outindex + segmentoffset >= decompressed_size) { debug_log("ERR: Compression out of bounds! (case 2)\n"); }
-					char data = decompressed[outindex + segmentoffset];
-					outindex--;
-					decompressed[outindex] = data;
-				}
-			}
-			else
-			{
-				if (outindex < 1) { debug_log("ERR: Compression out of bounds! (case 3)\n"); }
-				outindex--;
-				index--;
-				decompressed[outindex] = compressed[index];
-			}
-			control = control << 1;
-			control = control & 0xFF;
-			if (outindex == 0)
-			{
-				break;
-			}
-		}
-	}
-	
-	return decompressed;
+    ctx->header = malloc(raw_header.size);
+    if (ctx->header == NULL) {
+		// fwrite("allc\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
+    }
+    
+    fseeko64(ctx->file, 0, SEEK_SET);
+    if (fread(ctx->header, 1, raw_header.size, ctx->file) != raw_header.size) {
+		// fwrite("read\n", 5, 1, inierr_f);
+		// fflush(inierr_f);
+    }
+    
+    uint64_t offset = 0;
+    for (unsigned int i = 0; i < ctx->header->num_processes; i++) {
+        ctx->kips[i].tool_ctx = ctx->tool_ctx;
+        ctx->kips[i].header = (kip1_header_t *)&ctx->header->kip_data[offset];
+        if (ctx->kips[i].header->magic != MAGIC_KIP1) {
+			// fwrite("cor2\n", 5, 1, inierr_f);
+            // fflush(inierr_f);
+        }
+        offset += kip1_get_size(&ctx->kips[i]);
+    }
+    
+    
+	// fwrite("done\n", 5, 1, inierr_f);
+    // fclose(inierr_f);
+    ini1_save(ctx);
 }
 
-char* kip_get_full(FILE* kipfile, int* kipsize)
-{
-	debug_log("reading sizes...\n");
-	
-	fseek(kipfile, 0x20, SEEK_SET);
-	u32 tloc = read_i32_le(kipfile); u32 tsize = read_i32_le(kipfile); u32 tfilesize = read_i32_le(kipfile);
-	debug_log("tloc: %08x, tsize: %08x, tfilesize: %08x\n", tloc, tsize, tfilesize);
-	
-	fseek(kipfile, 0x30, SEEK_SET);
-	u32 rloc = read_i32_le(kipfile); u32 rsize = read_i32_le(kipfile); u32 rfilesize = read_i32_le(kipfile);
-	debug_log("rloc: %08x, rsize: %08x, rfilesize: %08x\n", rloc, rsize, rfilesize);
-	
-	fseek(kipfile, 0x40, SEEK_SET);
-	u32 dloc = read_i32_le(kipfile); u32 dsize = read_i32_le(kipfile); u32 dfilesize = read_i32_le(kipfile);
-	debug_log("dloc: %08x, dsize: %08x, dfilesize: %08x\n", dloc, dsize, dfilesize);
-
-	
-	int toff = 0x100;
-	int roff = toff + tfilesize;
-	int doff = roff + rfilesize;
-	debug_log("toff: %08x, roff: %08x, doff: %08x\n", toff, roff, doff);
-
-	fseek(kipfile, 0x18, SEEK_SET);
-	int bsssize = read_i32_le(kipfile);
-	debug_log("bss-size: %08x\n", bsssize);
-
-	
-	int t_dsize, r_dsize, d_dsize;
-	debug_log("decompressing sections (t)...\n");
-	char* text = blz_decompress(kipfile, toff, tfilesize, &t_dsize);
-	debug_log("decompressing sections (r)...\n");
-	char* ro   = blz_decompress(kipfile, roff, rfilesize, &r_dsize);
-	debug_log("decompressing sections (d)...\n");
-	char* data = blz_decompress(kipfile, doff, dfilesize, &d_dsize);
-	
-	
-	debug_log("joining sections...\n");
-	char* full = malloc(t_dsize + r_dsize + d_dsize);
-	
-	memcpy(full, text, t_dsize);
-	memcpy(full + t_dsize, ro, r_dsize);
-	memcpy(full + t_dsize + r_dsize, data, d_dsize);
-	
-	debug_log("cleaning up...\n");
-	free(text); free(ro); free(data);
-	*kipsize = t_dsize + r_dsize + d_dsize;
-	
-	return full;
+void ini1_print(ini1_ctx_t *ctx) {
+    printf("INI1:\n");
+    printf("    Number of Processes:            %02"PRIx32"\n", ctx->header->num_processes);
+    printf("    Size:                           %08"PRIx32"\n", ctx->header->size);
+    printf("\n");
+    for (unsigned int i = 0; i < ctx->header->num_processes; i++) {
+        printf("Process %02"PRIx32":\n", i);
+        kip1_print(&ctx->kips[i], 1);
+        printf("\n");
+    }
+    printf("\n");
 }
 
-void extract_kip1s(application_ctx* appstate)
-{
-	debug_log("Decompressing spl kip1...\n");
-	
-	FILE* spl_f = fopen(spl_path, FMODE_READ);
-	FILE* decomp_spl_f = fopen(decompressed_spl_path, FMODE_WRITE);
-	int spl_size;
-	char* spl_data = kip_get_full(spl_f, &spl_size);
-	fwrite(spl_data, spl_size, 1, decomp_spl_f);
-	
-	debug_log("Result: spl_size == %08x\n", spl_size);
-	
-	free(spl_data);
-	fclose(decomp_spl_f);
-	fclose(spl_f);
-	
-	debug_log("Decompressing FS kip1...\n");
-	
-	FILE* FS_f = fopen(FS_path, FMODE_READ);
-	FILE* decomp_FS_f = fopen(decompressed_FS_path, FMODE_WRITE);
-	int FS_size;
-	char* FS_data = kip_get_full(FS_f, &FS_size);
-	fwrite(FS_data, FS_size, 1, decomp_FS_f);
-	
-	debug_log("Result: FS_size == %08x\n", spl_size);
-	
-	free(FS_data);
-	fclose(decomp_FS_f);
-	fclose(FS_f);
+void ini1_save(ini1_ctx_t *ctx) {
+    filepath_t *dirpath = NULL;
+    if (ctx->tool_ctx->file_type == FILETYPE_INI1 && ctx->tool_ctx->settings.out_dir_path.enabled) {
+        dirpath = &ctx->tool_ctx->settings.out_dir_path.path;
+    }
+    if (dirpath == NULL || dirpath->valid != VALIDITY_VALID) {
+        dirpath = &ctx->tool_ctx->settings.ini1_dir_path;
+    }
+    if (dirpath != NULL && dirpath->valid == VALIDITY_VALID) {
+        os_makedir(dirpath->os_path);
+        for (unsigned int i = 0; i < ctx->header->num_processes; i++) {
+            char padded_name[0x20];
+            memset(&padded_name, 0, sizeof(padded_name));
+            memcpy(&padded_name, ctx->kips[i].header->name, sizeof(ctx->kips[i].header->name));
+            strcat(padded_name, ".kip1");
+            printf("Saving %s to %s/%s...\n", padded_name, dirpath->char_path, padded_name);
+            save_buffer_to_directory_file(ctx->kips[i].header, kip1_get_size(&ctx->kips[i]), dirpath, padded_name);
+            if (ctx->tool_ctx->action & ACTION_SAVEINIJSON) {
+                printf("SAVING INI JSON!\n");
+                memset(&padded_name, 0, sizeof(padded_name));
+                memcpy(&padded_name, ctx->kips[i].header->name, sizeof(ctx->kips[i].header->name));
+                strcat(padded_name, ".json");
+                filepath_t json_path;
+                filepath_init(&json_path);
+                filepath_copy(&json_path, dirpath);
+                filepath_append(&json_path, padded_name);
+                FILE *f_json = os_fopen(json_path.os_path, OS_MODE_WRITE);
+                if (f_json == NULL) {
+                    fprintf(stderr, "Failed to open %s!\n", json_path.char_path);
+                    return;
+                }
+                const char *json = kip1_get_json(&ctx->kips[i]);
+                if (fwrite(json, 1, strlen(json), f_json) != strlen(json)) {
+                    fprintf(stderr, "Failed to write JSON file!\n");
+                    exit(EXIT_FAILURE);
+                }
+                fclose(f_json);
+            }
+        }
+    }
 }
 
-void derive_part2_spl(application_ctx* appstate)
-{
-	debug_log("Opening decompressed spl kip1...\n");
-	
-	FILE* SPL_f = fopen(decompressed_spl_path, FMODE_READ);
-	
-	fseek(SPL_f, 0, SEEK_END);
-	int SPL_SIZE = ftell(SPL_f);
-	fseek(SPL_f, 0, SEEK_SET);
-	
-	debug_log("SPL_SIZE == %08x\n", SPL_SIZE);
-	
-	char* SPL_DATA = malloc(SPL_SIZE);
-	fread(SPL_DATA, SPL_SIZE, 1, SPL_f);
-	fclose(SPL_f);
-	
-	debug_log("Adding %s to the key file\n", "aes_key_generation_source");
-	find_and_add_key(SPL_DATA, 0x07, SPL_SIZE);  //aes_key_generation_source
-	
-	free(SPL_DATA);
+const char *kip1_get_json(kip1_ctx_t *ctx) {
+    cJSON *kip_json = cJSON_CreateObject();
+    const char *output_str = NULL;
+    char work_buffer[0x300] = {0};
+    
+    /* Add KIP1 header fields. */
+    strcpy(work_buffer, ctx->header->name);
+    cJSON_AddStringToObject(kip_json, "name", work_buffer);
+    cJSON_AddU64ToObject(kip_json, "title_id", ctx->header->title_id);
+    cJSON_AddU32ToObject(kip_json, "main_thread_stack_size", ctx->header->section_headers[1].attribute);
+    cJSON_AddNumberToObject(kip_json, "main_thread_priority", ctx->header->main_thread_priority);
+    cJSON_AddNumberToObject(kip_json, "default_cpu_id", ctx->header->default_core);
+    cJSON_AddNumberToObject(kip_json, "process_category", ctx->header->process_category);
+    
+     /* Add KAC. */
+    cJSON *kac_json = kac_get_json(ctx->header->capabilities, sizeof(ctx->header->capabilities) / sizeof(uint32_t));
+    cJSON_AddItemToObject(kip_json, "kernel_capabilities", kac_json);
+    
+    output_str = cJSON_Print(kip_json);
+    
+    cJSON_Delete(kip_json);
+    return output_str;
 }
 
-void derive_part2_FS(application_ctx* appstate)
-{
-	debug_log("Opening decompressed FS kip1...\n");
-	
-	FILE* FS_f = fopen(decompressed_FS_path, FMODE_READ);
-	
-	fseek(FS_f, 0, SEEK_END);
-	int FS_SIZE = ftell(FS_f);
-	fseek(FS_f, 0, SEEK_SET);
-	
-	debug_log("FS_SIZE == %08x\n", FS_SIZE);
-	
-	char* FS_DATA = malloc(FS_SIZE);
-	fread(FS_DATA, FS_SIZE, 1, FS_f);
-	fclose(FS_f);
-	
-	debug_log("Adding %s to the key file\n", "key_area_key_application_source");
-	find_and_add_key(FS_DATA, 0x09, FS_SIZE);  //key_area_key_application_source
-	debug_log("Adding %s to the key file\n", "key_area_key_ocean_source");
-	find_and_add_key(FS_DATA, 0x0A, FS_SIZE);  //key_area_key_ocean_source
-	debug_log("Adding %s to the key file\n", "key_area_key_system_source");
-	find_and_add_key(FS_DATA, 0x0B, FS_SIZE);  //key_area_key_system_source
-	debug_log("Adding %s to the key file\n", "sd_card_kek_source");
-	find_and_add_key(FS_DATA, 0x0C, FS_SIZE);  //sd_card_kek_source
-	debug_log("Adding %s to the key file\n", "sd_card_save_key_source");
-	find_and_add_key(FS_DATA, 0x0D, FS_SIZE);  //sd_card_save_key_source
-	debug_log("Adding %s to the key file\n", "sd_card_nca_key_source");
-	find_and_add_key(FS_DATA, 0x0E, FS_SIZE);  //sd_card_nca_key_source
-	debug_log("Adding %s to the key file\n", "header_kek_source");
-	find_and_add_key(FS_DATA, 0x0F, FS_SIZE);  //header_kek_source
-	debug_log("Adding %s to the key file\n", "header_key_source");
-	find_and_add_key(FS_DATA, 0x10, FS_SIZE);  //header_key_source
-	
-	free(FS_DATA);
+void kip1_process(kip1_ctx_t *ctx) {
+    /* Read *just* safe amount. */
+    kip1_header_t raw_header; 
+    fseeko64(ctx->file, 0, SEEK_SET);
+    if (fread(&raw_header, 1, sizeof(raw_header), ctx->file) != sizeof(raw_header)) {
+        fprintf(stderr, "Failed to read KIP1 header!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    if (raw_header.magic != MAGIC_KIP1) {
+        printf("Error: KIP1 is corrupt!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    uint64_t size = kip1_get_size_from_header(&raw_header);
+    ctx->header = malloc(size);
+    if (ctx->header == NULL) {
+        fprintf(stderr, "Failed to allocate KIP1 header!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    fseeko64(ctx->file, 0, SEEK_SET);
+    if (fread(ctx->header, 1, size, ctx->file) != size) {
+        fprintf(stderr, "Failed to read KIP1!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    if (ctx->tool_ctx->action & ACTION_INFO) {
+        kip1_print(ctx, 0);
+    }
+    
+    if (ctx->tool_ctx->action & ACTION_EXTRACT) {
+        kip1_save(ctx);
+    }
+}
+
+void kip1_print(kip1_ctx_t *ctx, int suppress) {
+    if (!suppress) printf("KIP1:\n");
+    printf("    Title ID:                       %016"PRIx64"\n", ctx->header->title_id);
+    char padded_name[13];
+    memset(&padded_name, 0, sizeof(padded_name));
+    memcpy(&padded_name, ctx->header->name, sizeof(ctx->header->name));
+    printf("    Name:                           %s\n", padded_name);
+    printf("    Process Category:               %s\n", npdm_get_proc_category(ctx->header->process_category));
+    printf("    Main Thread Priority:           %"PRId8"\n", ctx->header->main_thread_priority);
+    printf("    Default CPU Core:               %"PRId8"\n", ctx->header->default_core);
+    printf("    Is 64 Bit:                      %s\n", (ctx->header->flags & (1 << 3)) ? "True" : "False");
+    printf("    Is Address Space 64 Bit:        %s\n", (ctx->header->flags & (1 << 4)) ? "True" : "False");
+    printf("    Sections:\n");
+    printf("        .text:                      %08"PRIx32"-%08"PRIx32"\n", ctx->header->section_headers[0].out_offset, ctx->header->section_headers[0].out_offset + align(ctx->header->section_headers[0].out_size, 0x1000));
+    printf("        .rodata:                    %08"PRIx32"-%08"PRIx32"\n", ctx->header->section_headers[1].out_offset, ctx->header->section_headers[1].out_offset + align(ctx->header->section_headers[1].out_size, 0x1000));
+    printf("        .rwdata:                    %08"PRIx32"-%08"PRIx32"\n", ctx->header->section_headers[2].out_offset, ctx->header->section_headers[2].out_offset + align(ctx->header->section_headers[2].out_size, 0x1000));
+    printf("        .bss:                       %08"PRIx32"-%08"PRIx32"\n", ctx->header->section_headers[3].out_offset, ctx->header->section_headers[3].out_offset + align(ctx->header->section_headers[3].out_size, 0x1000));
+    printf("    Kernel Access Control:\n");
+    kac_print(ctx->header->capabilities, 0x20);
+    printf("\n");
+}
+
+void kip1_save(kip1_ctx_t *ctx) {
+    /* Do nothing. */
+    filepath_t *json_path = &ctx->tool_ctx->settings.npdm_json_path;
+    if (ctx->tool_ctx->file_type == FILETYPE_KIP1 && json_path->valid == VALIDITY_VALID) {
+        FILE *f_json = os_fopen(json_path->os_path, OS_MODE_WRITE);
+        if (f_json == NULL) {
+            fprintf(stderr, "Failed to open %s!\n", json_path->char_path);
+            return;
+        }
+        const char *json = kip1_get_json(ctx);
+        if (fwrite(json, 1, strlen(json), f_json) != strlen(json)) {
+            fprintf(stderr, "Failed to write JSON file!\n");
+            exit(EXIT_FAILURE);
+        }
+        fclose(f_json);
+    }
 }

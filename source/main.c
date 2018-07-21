@@ -15,13 +15,13 @@
 // #include "hactool/utils.h"
 
 //local includes
-#include "graphics/gui.h"
+#include "gui.h"
 
 #include "util.h"
 #include "derivation.h"
 #include "keys.h"
-#include "kip.h"
-#include "packages.h"
+#include "kips.h"
+#include "packages12.h"
 //#include "upload.h"
 
 

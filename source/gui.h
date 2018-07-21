@@ -5,7 +5,7 @@
 #include <switch.h>
 
 #include "graphics.h"
-#include "../util.h"
+#include "util.h"
 
 //Format in hex is      0xAABBGGRR
 #define CLEAR_COL       0xFFFFE0E0

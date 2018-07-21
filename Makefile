@@ -37,7 +37,7 @@ APP_VERSION	:=	1.1
 TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 BUILD		:=	build
 OUTDIR      :=  out
-SOURCES		:=	source source/graphics source/hactool
+SOURCES		:=	source
 DATA		:=	data
 INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
@@ -65,7 +65,7 @@ LIBS	:= -lnx -lcurl -lmbedtls -lmbedx509 -lmbedcrypto `freetype-config --libs`
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(PORTLIBS) $(LIBNX) $(TOPDIR)/source/hactool/mbedtls
+LIBDIRS	:= $(PORTLIBS) $(LIBNX) $(TOPDIR)/source/mbedtls
 
 
 #---------------------------------------------------------------------------------
@@ -150,14 +150,14 @@ endif
 all: $(BUILD)
 
 $(BUILD):
-	$(MAKE) -C source/hactool/mbedtls/lib all
+	$(MAKE) -C source/mbedtls/lib all
 	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	$(MAKE) -C source/hactool/mbedtls/lib clean
+	$(MAKE) -C source/mbedtls/lib clean
 	@rm -fr $(BUILD) $(OUTDIR) $(TARGET).pfs0 $(TARGET).nso $(TARGET).nro $(TARGET).nacp $(TARGET).elf
 
 

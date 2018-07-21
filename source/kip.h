@@ -1,58 +1,73 @@
-#ifndef KIP_H
-#define KIP_H
+#ifndef HACTOOL_KIP_H
+#define HACTOOL_KIP_H
+#include "types.h"
+#include "utils.h"
+#include "settings.h"
 
-#include "util.h"
-#include "keys.h"
+#define MAGIC_INI1 0x31494E49
+#define MAGIC_KIP1 0x3150494B
+#define INI1_MAX_KIPS 0x50
 
+typedef struct {
+    uint32_t magic;
+    uint32_t size;
+    uint32_t num_processes;
+    uint32_t _0xC;
+    char kip_data[];
+} ini1_header_t;
 
-extern const char spl_path[256];
-extern const char decompressed_spl_path[256];
+typedef struct {
+    uint32_t out_offset;
+    uint32_t out_size;
+    uint32_t compressed_size;
+    uint32_t attribute;
+} kip_section_header_t;
 
-extern const char FS_path[256];
-extern const char decompressed_FS_path[256];
+typedef struct {
+    uint32_t magic;
+    char name[0xC];
+    uint64_t title_id;
+    uint32_t process_category;
+    uint8_t main_thread_priority;
+    uint8_t default_core;
+    uint8_t _0x1E;
+    uint8_t flags;
+    kip_section_header_t section_headers[6];
+    uint32_t capabilities[0x20];
+    unsigned char data[];
+} kip1_header_t;
 
+typedef struct {
+    FILE *file;
+    hactool_ctx_t *tool_ctx;
+    kip1_header_t *header;
+} kip1_ctx_t;
 
-/**
- * @brief Decompresses BLZ compressed data within has_compdata of size compdata_size starting at compdata_off and storing the size of the decompressed data in decompdata_size before returning a pointer to the decompressed data
- * 
- * @param has_compdata File which contains the BLZ compressed data
- * @param compdata_off Offset from the beginning of has_compdata where the compressed data is
- * @param compdata_size Size of the compressed data in bytes
- * @param decompdata_size Place to store the size of the decompressed data for use later
- * 
- * @return Pointer to decompressed data. Free this once done with it!!
- */
-char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, int* decompdata_size);
+typedef struct {
+    FILE *file;
+    hactool_ctx_t *tool_ctx;
+    ini1_header_t *header;
+    kip1_ctx_t kips[INI1_MAX_KIPS];
+} ini1_ctx_t;
 
-/**
- * @brief Decompresses the .text, .rodata, and .data of kipfile and returns a pointer to the full decompressed data, storing the size of it in kipsize
- * 
- * @param kipfile Kernel Initial Process file, obtained from package2's INI1 portion
- * @param kipsize Place to store the size of the decompressed kip
- * 
- * @return Pointer to full decompressed data. Free this once done with it!!
- */
-char* kip_get_full(FILE* kipfile, int* kipsize);
+void ini1_process(ini1_ctx_t *ctx);
+void ini1_print(ini1_ctx_t *ctx);
+void ini1_save(ini1_ctx_t *ctx);
 
-/**
- * @brief Decompresses both spl and FS kip1s and saves their decompressed versions
- * 
- * @param appstate State of the application 
- */
-void extract_kip1s(application_ctx* appstate);
+const char *kip1_get_json(kip1_ctx_t *ctx);
+void kip1_process(kip1_ctx_t *ctx);
+void kip1_print(kip1_ctx_t *ctx, int suppress);
+void kip1_save(kip1_ctx_t *ctx);
 
-/**
- * @brief Finds relevant keys within the decompressed version of spl
- * 
- * @param appstate State of the application 
- */
-void derive_part2_spl(application_ctx* appstate);
+static inline uint64_t kip1_get_size(kip1_ctx_t *ctx) {
+    /* Header + .text + .rodata + .rwdata */
+    return 0x100 + ctx->header->section_headers[0].compressed_size + ctx->header->section_headers[1].compressed_size + ctx->header->section_headers[2].compressed_size;
+}
 
-/**
- * @brief Finds relevant keys within the decompressed version of FS
- * 
- * @param appstate State of the application 
- */
-void derive_part2_FS(application_ctx* appstate);
+static inline uint64_t kip1_get_size_from_header(kip1_header_t *header) {
+    /* Header + .text + .rodata + .rwdata */
+    return 0x100 + header->section_headers[0].compressed_size + header->section_headers[1].compressed_size + header->section_headers[2].compressed_size;
+}
+
 
 #endif
