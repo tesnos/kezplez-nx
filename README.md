@@ -20,7 +20,10 @@ Dumping tsec_keys will be an option in the 3.3 release of CTCaer's hekate, for n
 
 4. Launch it, read the information presented, and press A to have the magic happen
 
-Keys will appear at "/keys.txt" on your sd card. In the future, there may be features such as uploading keys to a site like pastebin.com for convenience or a payload version of this application so you can run it in RCM.
+Keys will appear at "/prod.keys" on your sd card, you can then use them with hactool via
+* A) (Recommended) Place them at $HOME/.switch/prod.keys, this allows you to use hactool freely from anywhere without having to worry about where your keyfile is
+* B) (Not Recommended) Place them in the same directory as hactool and use -k or --keyset.  This is not recommended because you must directly specify where your keyfile is every time you wish to use hactool
+In the future, there may be features such as uploading keys to a site like pastebin.com for convenience or a payload version of this application so you can run it in RCM.
 
 
 ## Licensing Information
@@ -30,7 +33,7 @@ See LICENSE.md
 Requires libnx + libcurl and libfreetype from the devkitpro pacman switch-portlibs.
 Just type `make` and you'll have yourself a fresh build.
 
-Note: requires [this](https://github.com/switchbrew/libnx/pull/130) pr for libnx (Should be merged soon)
+Note: requires very latest libnx (build from source, 1.3.0 is too old)
 
 ## Thanks to...
 * SciresM for hactool
@@ -38,7 +41,7 @@ Note: requires [this](https://github.com/switchbrew/libnx/pull/130) pr for libnx
 * mbedtls
 * libcurl
 * Team Reswitched
-* Everyone who has helped me with my dumb mistakes in the ReSwitched Discord
+* Everyone who has helped me with my dumb mistakes in the ReSwitched/Nintendo Homebrew Discords
 * Team Switchbrew
 
 ## The message "PLEASE stop hurting people and killing the homebrew scene" goes to...

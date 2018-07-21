@@ -1,7 +1,11 @@
+#ifndef GUI_H
+#define GUI_H
+
 #include <stdbool.h>
 #include <switch.h>
 
 #include "graphics.h"
+#include "../util.h"
 
 //Format in hex is      0xAABBGGRR
 #define CLEAR_COL       0xFFFFE0E0
@@ -29,7 +33,7 @@ void gui_clearscreen(void);
 
 void gui_beginframe(void);
 
-void gui_drawframe(int appstate);
+void gui_drawframe(application_ctx* appstate);
 
 void gui_draw_link(char* curl_resp);
 
@@ -42,3 +46,5 @@ void gui_endframe(void);
 void gui_blankframe(void);
 
 void gui_exit(void);
+
+#endif
