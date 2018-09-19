@@ -135,4 +135,10 @@ void debug_log_toscreen(application_ctx* appstate, char* log_text, ...);
  */
 void debug_log(char* log_text, ...);
 
+FILE* safe_fopen(const char* filepath, char* mode);
+
+void util_hold_appstate(application_ctx* appstate);
+
+void fatal_error(char* err_text, ...);
+
 #endif

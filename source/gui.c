@@ -42,12 +42,12 @@ void gui_draw_link(char* curl_resp)
 
 void gui_draw_begininfo()
 {
-	graphics_draw_text(50, 80, graphics_get_theme_color_font(), "Press A to begin. This process may take up to 2 minutes, so please patient.\nAs progress is made, the above counter will increment and when it reaches 19 the program has finished.\nIt is expected for the counter to be stuck at 17 for a while.");
+	graphics_draw_text(50, 80, graphics_get_theme_color_font(), "Press A to begin. This process may take up to 2 minutes, so please patient.\nAs progress is made, the above counter will increment and when it reaches 15 the program has finished.\nIt is expected for the counter to be stuck at 13 for a while.");
 }
 
 void gui_draw_doneinfo()
 {
-	graphics_draw_text(50, 80, graphics_get_theme_color_font(), "All keys have been extracted.\nThey are in a file named 'keys.txt' at the root of your sd card.\nPress + to exit.");
+	graphics_draw_text(50, 80, graphics_get_theme_color_font(), "All keys have been extracted.\nThey are in a file named 'prod.keys' at the root of your sd card.\nPress + to exit.");
 }
 
 void gui_drawframe(application_ctx* appstate)
@@ -67,12 +67,19 @@ void gui_drawframe(application_ctx* appstate)
 		#endif
 	}
 	
-	char a[33]; a[32] = 0x00;
-	snprintf(a, 32, "%02i/%02i", appstate->progress, PROGRESS_TOTAL);
-	graphics_draw_text(50, 18, graphics_get_theme_color_font(), a);
-	
-	graphics_draw_rect(50, 40, screenwidth - 100, 35, 0xFF2D2D2D);
-	graphics_draw_rect(50, 40, (int) ((float) (screenwidth - 100) * ((float) appstate->progress / (float) PROGRESS_TOTAL)), 35, COL_GREEN);
+	if (appstate->state_id != -1)
+	{
+		char a[33]; a[32] = 0x00;
+		snprintf(a, 32, "%02i/%02i", appstate->progress, PROGRESS_TOTAL);
+		graphics_draw_text(50, 18, graphics_get_theme_color_font(), a);
+		
+		graphics_draw_rect(50, 40, screenwidth - 100, 35, 0xFF2D2D2D);
+		graphics_draw_rect(50, 40, (int) ((float) (screenwidth - 100) * ((float) appstate->progress / (float) PROGRESS_TOTAL)), 35, COL_GREEN);
+	}
+	else
+	{
+		graphics_draw_text(50, 18, COL_CYAN, appstate->log_buffer);
+	}
 }
 
 void gui_endframe()

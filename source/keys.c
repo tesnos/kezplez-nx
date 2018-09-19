@@ -274,15 +274,15 @@ void get_tsec_sbk()
 	
 	debug_log("opening tsec and sbk\n");
 	debug_log("old tsec path: %s, new tsec path: %s, and fuse path: %s\n", hekate_tsecdump_old_path_full, hekate_tsecdump_new_path_full, hekate_fusedump_path_full);
-	FILE* fusefile = fopen(hekate_fusedump_path_full, FMODE_READ);
 	FILE* tsecfile = fopen(hekate_tsecdump_old_path_full, FMODE_READ);
 	if (tsecfile == NULL)
 	{
 		debug_log("Failed to open old tsecfile, trying newer one\n");
 		tsecfile = fopen(hekate_tsecdump_new_path_full, FMODE_READ);
-		if (tsecfile == NULL) { debug_log("Failed to open tsecfile\n"); }
+		if (tsecfile == NULL) { fatal_error("Failed to open tsec_key.bin or tsec_keys.bin, please make sure to dump your fuses in hekate!\n"); return; }
 	}
-	if (fusefile == NULL) { debug_log("Failed to open fusefile\n"); }
+	FILE* fusefile = fopen(hekate_fusedump_path_full, FMODE_READ);
+	if (fusefile == NULL) { fatal_error("Failed to open fuses.bin, please make sure to dump your fuses in hekate!\n"); fclose(tsecfile); return; }
 	
 	fseek(fusefile, 0, SEEK_SET);
 	fseek(fusefile, 0xA4, SEEK_SET);

@@ -31,11 +31,22 @@ Thread* step_thread;
 
 int main(int argc, char** argv)
 {
-	memset(&appstate, 0x00, sizeof(appstate));
-	
 	//clears out/creates log and keyfile
+	remove(log_path);
+	remove(keyfile_path);
 	fclose(fopen(log_path, FMODE_WRITE));
 	fclose(fopen(keyfile_path, FMODE_WRITE));
+	
+	//state init
+	memset(&appstate, 0x00, sizeof(appstate));
+	util_hold_appstate(&appstate); //for errors
+	//internal variable inits
+	debug_log("setting up internal state\n");
+	appstate.state_id = 0;
+	appstate.progress = 0;
+	#ifdef LOGGING_ENABLED
+	memset(appstate.log_buffer, 0x00, 256);
+	#endif
 	
 	//app init
 	debug_log("general application initialization\n");
@@ -46,14 +57,6 @@ int main(int argc, char** argv)
 	
 	//curl init
 	//upload_init();
-	
-	//internal variable inits
-	debug_log("setting up internal state\n");
-	appstate.state_id = 0;
-	appstate.progress = 0;
-	#ifdef LOGGING_ENABLED
-	memset(appstate.log_buffer, 0x00, 256);
-	#endif
 	
 	//dump locating
 	get_hekate_dump_prefix();
@@ -68,9 +71,11 @@ int main(int argc, char** argv)
 	//hactool init
 	debug_log("loading in tsec and sbk\n");
 	get_tsec_sbk();
-	debug_log("preparing hactool\n");
-	hactool_init(&appstate);
-	
+	if (appstate.state_id == 0)
+	{
+		debug_log("preparing hactool\n");
+		hactool_init(&appstate);
+	}
 	
 	debug_log("main loop begins\n");
 	while (appletMainLoop())
@@ -78,6 +83,12 @@ int main(int argc, char** argv)
 		hidScanInput();
 		u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
 		if (kDown & KEY_PLUS) break;
+		
+		//Error
+		if (appstate.state_id == -1)
+		{
+			
+		}
 		
 		//Beginning
 		if (appstate.state_id == 0)

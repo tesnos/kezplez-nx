@@ -62,16 +62,16 @@ char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, in
 		{
 			if (control & 0x80)
 			{
-				if (index < 2) { debug_log("ERR: Compression out of bounds! (case 0)\n"); }
+				if (index < 2) { fatal_error("BLZ Decompression Error: Compression out of bounds! (case 0)\n"); free(decompressed); return NULL; }
 				index -= 2;
 				int segmentoffset = compressed[index] | (compressed[index + 1] << 8);
 				int segmentsize = ((segmentoffset >> 12) & 0xF) + 3;
 				segmentoffset = segmentoffset & 0x0FFF;
 				segmentoffset += 2;
-				if (outindex < segmentsize) { debug_log("ERR: Compression out of bounds! (case 1)\n"); }
+				if (outindex < segmentsize) { fatal_error("BLZ Decompression Error: Compression out of bounds! (case 1)\n"); free(decompressed); return NULL; }
 				for (int j = 0; j < segmentsize; j++)
 				{
-					if (outindex + segmentoffset >= decompressed_size) { debug_log("ERR: Compression out of bounds! (case 2)\n"); }
+					if (outindex + segmentoffset >= decompressed_size) { fatal_error("BLZ Decompression Error: Compression out of bounds! (case 2)\n"); free(decompressed); return NULL; }
 					char data = decompressed[outindex + segmentoffset];
 					outindex--;
 					decompressed[outindex] = data;
@@ -79,7 +79,7 @@ char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, in
 			}
 			else
 			{
-				if (outindex < 1) { debug_log("ERR: Compression out of bounds! (case 3)\n"); }
+				if (outindex < 1) { fatal_error("BLZ Decompression Error: Compression out of bounds! (case 3)\n"); free(decompressed); return NULL; }
 				outindex--;
 				index--;
 				decompressed[outindex] = compressed[index];
@@ -131,6 +131,15 @@ char* kip_get_full(FILE* kipfile, int* kipsize)
 	debug_log("decompressing sections (d)...\n");
 	char* data = blz_decompress(kipfile, doff, dfilesize, &d_dsize);
 	
+	if (text == NULL || ro == NULL || data == NULL)
+	{
+		if (text != NULL) { free(text); }
+		if (ro != NULL) { free(ro); }
+		if (data != NULL) { free(data); }
+		
+		return NULL;
+	}
+	
 	
 	debug_log("joining sections...\n");
 	char* full = malloc(t_dsize + r_dsize + d_dsize);
@@ -150,38 +159,44 @@ void extract_kip1s(application_ctx* appstate)
 {
 	debug_log_toscreen(appstate, "Decompressing spl kip1...\n");
 	
-	FILE* spl_f = fopen(spl_path, FMODE_READ);
-	FILE* decomp_spl_f = fopen(decompressed_spl_path, FMODE_WRITE);
+	FILE* spl_f = safe_fopen(spl_path, FMODE_READ);
+	if (spl_f == NULL) { return; }
 	int spl_size;
 	char* spl_data = kip_get_full(spl_f, &spl_size);
+	fclose(spl_f);
+	if (spl_data == NULL) { return; }
+	
+	FILE* decomp_spl_f = fopen(decompressed_spl_path, FMODE_WRITE);
 	fwrite(spl_data, spl_size, 1, decomp_spl_f);
+	free(spl_data);
+	fclose(decomp_spl_f);
 	
 	debug_log("Result: spl_size == %08x\n", spl_size);
 	
-	free(spl_data);
-	fclose(decomp_spl_f);
-	fclose(spl_f);
 	
 	debug_log_toscreen(appstate, "Decompressing FS kip1...\n");
 	
-	FILE* FS_f = fopen(FS_path, FMODE_READ);
-	FILE* decomp_FS_f = fopen(decompressed_FS_path, FMODE_WRITE);
+	FILE* FS_f = safe_fopen(FS_path, FMODE_READ);
+	if (FS_f == NULL) { return; }
 	int FS_size;
 	char* FS_data = kip_get_full(FS_f, &FS_size);
+	fclose(FS_f);
+	if (FS_data == NULL) { return; }
+	
+	FILE* decomp_FS_f = fopen(decompressed_FS_path, FMODE_WRITE);
 	fwrite(FS_data, FS_size, 1, decomp_FS_f);
-	
-	debug_log("Result: FS_size == %08x\n", spl_size);
-	
 	free(FS_data);
 	fclose(decomp_FS_f);
-	fclose(FS_f);
+	
+	debug_log("Result: FS_size == %08x\n", spl_size);
 }
 
 void derive_part2_spl(application_ctx* appstate)
 {
 	debug_log_toscreen(appstate, "Opening decompressed spl kip1...\n");
 	
-	FILE* SPL_f = fopen(decompressed_spl_path, FMODE_READ);
+	FILE* SPL_f = safe_fopen(decompressed_spl_path, FMODE_READ);
+	if (SPL_f == NULL) { return; }
 	
 	fseek(SPL_f, 0, SEEK_END);
 	int SPL_SIZE = ftell(SPL_f);
@@ -203,7 +218,8 @@ void derive_part2_FS(application_ctx* appstate)
 {
 	debug_log_toscreen(appstate, "Opening decompressed FS kip1...\n");
 	
-	FILE* FS_f = fopen(decompressed_FS_path, FMODE_READ);
+	FILE* FS_f = safe_fopen(decompressed_FS_path, FMODE_READ);
+	if (FS_f == NULL) { return; }
 	
 	fseek(FS_f, 0, SEEK_END);
 	int FS_SIZE = ftell(FS_f);

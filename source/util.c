@@ -13,6 +13,11 @@ const char hekate_tsecdump_new_path[256] = "/dumps/tsec_keys.bin\0";
 bool prefix_discovered = false;
 char hekate_dump_prefix[256];
 
+application_ctx* err_appstate;
+
+bool thread_dummied = false;
+FILE* dbg_f = NULL;
+
 
 //all credit to @shchmue for adding hekate 4.0+ support
 char* get_hekate_dump_prefix()
@@ -23,6 +28,7 @@ char* get_hekate_dump_prefix()
 		struct dirent* ent;
 		char dirname[256] = "/backup";
 		dir = opendir(dirname);
+		hekate_dump_prefix[0] = 0x00;
 		while ((ent = readdir(dir)))
 		{
 			char statbuf[256];
@@ -66,7 +72,14 @@ char* get_hekate_dump_prefix()
 			}
 		}
 		closedir(dir);
-		prefix_discovered = true;
+		if (hekate_dump_prefix[0] == 0x00)
+		{
+			fatal_error("Couldn't find a hekate dump directory!  Please at least dump your tsec keys and fuses before running this application.");
+		}
+		else
+		{
+			prefix_discovered = true;
+		}
 	}
 	
 	// debug_log(hekate_dump_prefix);
@@ -80,10 +93,6 @@ void prepend_hdp(char* suffix, char* dest)
 	
 	// debug_log(path);
 }
-
-
-bool thread_dummied = false;
-FILE* dbg_f = NULL;
 
 
 Thread* util_thread_func(void (*func)(application_ctx*), application_ctx* appstate)
@@ -115,9 +124,31 @@ Thread* util_thread_func(void (*func)(application_ctx*), application_ctx* appsta
 			rc = threadCreate(func_thread, (void (*)(void*)) thread_tester, thread_args, 0x2000000, 0x2C, -2);
 			thread_attempts++;
 		}
+		if (thread_attempts == 20 && rc != 0)
+		{
+			fatal_error("Unable to create thread, error code: %08x", rc);
+			return NULL;
+		}
 	}
+	
 	rc = threadStart(func_thread);
 	debug_log("c2%08x", rc);
+	
+	if (rc != 0x0)
+	{
+		int thread_attempts = 0;
+		while (thread_attempts < 20 && rc != 0)
+		{
+			usleep(50000);
+			rc = threadStart(func_thread);
+			thread_attempts++;
+		}
+		if (thread_attempts == 20 && rc != 0)
+		{
+			fatal_error("Unable to start thread, error code: %08x", rc);
+			return NULL;
+		}
+	}
 	
 	usleep(250000);
 	while(!appstate->thread_started) {  } //Wait until thread has started and made local argument copies to free the arguments
@@ -201,7 +232,7 @@ void hactool_init(application_ctx* appstate)
 	memset(&appstate->tool_ctx, 0, sizeof(appstate->tool_ctx));
 	appstate->tool_ctx.action = ACTION_INFO | ACTION_EXTRACT;
 	// key init
-	FILE* keyfile = fopen(keyfile_path, FMODE_READ);
+	FILE* keyfile = safe_open_key_file();
 	
 	pki_initialize_keyset(&appstate->tool_ctx.settings.keyset, KEYSET_RETAIL);
 	extkeys_initialize_keyset(&appstate->tool_ctx.settings.keyset, keyfile);
@@ -223,14 +254,14 @@ void debug_log_toscreen(application_ctx* appstate, char* log_text, ...)
 	vsnprintf(log_buffer, 255, log_text, args);
 	va_end(args);
 	
-	if (dbg_f == NULL) { dbg_f = fopen(log_path, FMODE_APPEND); }
+	if (dbg_f == NULL) { dbg_f = safe_fopen(log_path, FMODE_APPEND); }
 	if (dbg_f == NULL) { return; }
 	
 	fwrite(log_buffer, strlen(log_buffer), 1, dbg_f);
 	memset(appstate->log_buffer, 0x00, 256);
 	strncpy(appstate->log_buffer, log_buffer, 256);
 	
-	fflush(dbg_f);
+	fclose(dbg_f);
 #endif
 
 }
@@ -245,12 +276,47 @@ void debug_log(char* log_text, ...)
 	vsnprintf(log_buffer, 255, log_text, args);
 	va_end(args);
 
-	if (dbg_f == NULL) { dbg_f = fopen(log_path, FMODE_APPEND); }
+	if (dbg_f == NULL) { dbg_f = safe_fopen(log_path, FMODE_APPEND); }
 	if (dbg_f == NULL) { return; }
 	
 	fwrite(log_buffer, strlen(log_buffer), 1, dbg_f);
 	
-	fflush(dbg_f);
+	fclose(dbg_f);
 #endif
 
+}
+
+FILE* safe_fopen(const char* filepath, char* mode)
+{
+	FILE* targetfile = fopen(filepath, mode);
+	if (targetfile == NULL)
+	{
+		fatal_error("Unable to open file: %s", filepath);
+	}
+	return targetfile;
+}
+
+void util_hold_appstate(application_ctx* appstate)
+{
+	err_appstate = appstate;
+}
+
+void fatal_error(char* err_text, ...)
+{
+	err_appstate->state_id = -1;
+	
+	char log_buffer[256]; log_buffer[255] = 0x00;
+	va_list args;
+	va_start(args, err_text);
+	vsnprintf(log_buffer, 255, err_text, args);
+	va_end(args);
+	
+	if (dbg_f == NULL) { dbg_f = safe_fopen(log_path, FMODE_APPEND); }
+	if (dbg_f == NULL) { return; }
+	
+	fwrite(log_buffer, strlen(log_buffer), 1, dbg_f);
+	memset(err_appstate->log_buffer, 0x00, 256);
+	strncpy(err_appstate->log_buffer, log_buffer, 256);
+	
+	fclose(dbg_f);
 }
