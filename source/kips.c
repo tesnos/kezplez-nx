@@ -10,6 +10,7 @@ const char decompressed_FS_path[256] = "/switch/kezplez-nx/ini1/decomp_FS.kip1\0
 
 
 //so it turns out I do have to know how to do this now
+//addendum: so it turns out I didn't really know how to do this, thanks @shchmue for fixing it :)
 char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, int* decompdata_size)
 {
 	debug_log("reading compressed data into memory...\n");
@@ -37,7 +38,7 @@ char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, in
 	
 	debug_log("creating decompression buffer...\n");
 	
-	int decompressed_size = compressed_size + uncompressed_addl_size;
+	int decompressed_size = compdata_size + uncompressed_addl_size;
 	*decompdata_size = decompressed_size;
 	char* decompressed = malloc(decompressed_size);
 	if (compdata_size != compressed_size)
@@ -49,7 +50,7 @@ char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, in
 		memcpy(decompressed, compressed, compressed_size);
 	}
 	
-	int index = compressed_size - init_index;
+	int index = compdata_size - init_index;
 	int outindex = decompressed_size;
 	debug_log("decompressing...\n");
 

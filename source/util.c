@@ -6,13 +6,62 @@ const char log_path[256] = "/switch/kezplez-nx/log.txt\0";
 #endif
 
 const char keyfile_path[256] = "/switch/kezplez-nx/keys.txt\0";
-const char hekate_fusedump_path[256] = "/Backup/Dumps/fuses.bin\0";
-const char hekate_tsecdump_path[256] = "/Backup/Dumps/tsec_key.bin\0";
+const char hekate_fusedump_path[256] = "/dumps/fuses.bin\0";
+const char hekate_tsecdump_path[256] = "/dumps/tsec_keys.bin\0";
+
+bool prefix_discovered = false;
+char hekate_dump_prefix[256];
 
 
-//This is disgusting, but I couldn't get thread args to work so here we are
-//application_ctx* thread_appstate = NULL;
-//void (*thread_func)(application_ctx*) = NULL;
+//all credit to @shchmue for adding hekate 4.0+ support
+char* get_hekate_dump_prefix()
+{
+	if (!prefix_discovered)
+	{
+		DIR* dir;
+		struct dirent* ent;
+		char dirname[256] = "/backup";
+		dir = opendir(dirname);
+		while ((ent = readdir(dir)))
+		{
+			char statbuf[256];
+			strcpy(statbuf, dirname);
+			strcat(statbuf, "/");
+			strcat(statbuf, ent->d_name);
+			
+			struct stat sb;
+			stat(statbuf, &sb);
+			
+			if (strcmp(ent->d_name, "dumps") == 0 && S_ISDIR(sb.st_mode)) // /backup/dumps pre-hekate 4.0
+			{
+				strcpy(hekate_dump_prefix, dirname);
+				break;
+			}
+			else if (strtol(ent->d_name, NULL, 16) > 0 && S_ISDIR(sb.st_mode)) // /backup/<eMMC serial> post-hekate 4.0
+			{
+				strcat(dirname, "/");
+				strcat(dirname, ent->d_name);
+				strcpy(hekate_dump_prefix, dirname);
+				break;
+			}
+		}
+		closedir(dir);
+		prefix_discovered = true;
+	}
+	
+	// debug_log(hekate_dump_prefix);
+	return hekate_dump_prefix;
+}
+
+void prepend_hdp(char* suffix, char* dest)
+{
+	strcpy(dest, get_hekate_dump_prefix());
+	strcat(dest, suffix);
+	
+	// debug_log(path);
+}
+
+
 bool thread_dummied = false;
 FILE* dbg_f = NULL;
 
@@ -31,24 +80,30 @@ Thread* util_thread_func(void (*func)(application_ctx*), application_ctx* appsta
 	thread_args[0] = (u64) appstate;
 	thread_args[1] = (u64) func;
 	
-	//thread_func = func;
-	//thread_appstate = appstate;
 	
 	debug_log("b-%08x-%08x-%08x-", thread_args, thread_args[0], thread_args[1]);
-	//debug_log("b");
-	//Result rc = threadCreate(func_thread, util_thread_wrapper, thread_args, 0x20000, 0x2C, -2);
 	Result rc = threadCreate(func_thread, (void (*)(void*)) thread_tester, thread_args, 0x2000000, 0x2C, -2);
 	
-	debug_log("c%08x", rc);
+	debug_log("c%08x-", rc);
+	
+	if (rc != 0x0)
+	{
+		int thread_attempts = 0;
+		while (thread_attempts < 20 && rc != 0)
+		{
+			usleep(50000);
+			rc = threadCreate(func_thread, (void (*)(void*)) thread_tester, thread_args, 0x2000000, 0x2C, -2);
+			thread_attempts++;
+		}
+	}
 	rc = threadStart(func_thread);
+	debug_log("c2%08x", rc);
 	
 	usleep(250000);
 	while(!appstate->thread_started) {  } //Wait until thread has started and made local argument copies to free the arguments
-	//debug_log("d%08x", rc);
-	//debug_log("e");
+
 	free(thread_args);
 	
-	//debug_log("f\n");
 	return func_thread;
 }
 
@@ -56,9 +111,6 @@ Thread* util_thread_func(void (*func)(application_ctx*), application_ctx* appsta
 void thread_dummy_run(application_ctx* appstate)
 {
 	Thread* func_thread = malloc(sizeof(Thread));
-	
-	//u64* thread_args = malloc(sizeof(u64*) * 1);
-	//thread_args[0] = (u64) appstate;
 	
 	threadCreate(func_thread, (void (*)(void*)) thread_dummy, NULL, 0x2000000, 0x2C, -2);
 	threadStart(func_thread);
@@ -73,8 +125,6 @@ void thread_dummy_run(application_ctx* appstate)
 
 void thread_dummy(void* args)
 {
-	// u64* thread_args = (u64*) args;
-	// application_ctx* appstate = (application_ctx*) thread_args[0];
 	return;
 }
 
@@ -88,28 +138,16 @@ void thread_tester(void* args)
 	
 	void (*func)(application_ctx*) = (void (*)(application_ctx*)) thread_args[1];
 	
+	usleep(100000);
 	debug_log("you dream in color-%08x-%08x-%08x\n", thread_args, appstate, func);
-
+	usleep(100000);
+	
 	func(appstate);
 	
+	usleep(100000);
 	appstate->step_completed = true;
 	return;
 }
-
-// void util_thread_wrapper(void* args)
-// {
-	// u64* thread_args = (u64*) args;
-	// void (*func)(application_ctx*) = (void (*)(application_ctx*)) thread_args[0];
-	// application_ctx* appstate = (application_ctx*) thread_args[1];
-	
-	// thread_appstate->step_completed = false;
-	// debug_log("hey now\n");
-	// thread_appstate->thread_started = true;
-	// thread_func(thread_appstate);
-	// debug_log("hey now\n");
-	
-	// thread_appstate->step_completed = true;
-// }
 
 u32 read_u32_le(FILE* targetfile)
 {

@@ -1,12 +1,14 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <dirent.h>
 #include <switch.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "extkeys.h"
 #include "nca.h"
@@ -31,6 +33,7 @@ extern const char log_path[256];
 extern const char keyfile_path[256];
 extern const char hekate_fusedump_path[256];
 extern const char hekate_tsecdump_path[256];
+extern char hekate_dump_prefix[256];
 
 
 typedef struct
@@ -56,6 +59,12 @@ typedef struct
 #endif
 	
 } application_ctx;
+
+
+
+char* get_hekate_dump_prefix(void);
+
+void prepend_hdp(char* suffix, char* dest);
 
 /**
  * @brief Creates and starts the function func in a separate thread; the thread has a 0x20000 size stack, a priority of 0x2C, and is on the same core

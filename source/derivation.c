@@ -1,7 +1,6 @@
 #include "derivation.h"
 
 
-//const char package1_path[256] = "/switch/kezplez-nx/package1.bin\0";
 const char secmon_path[256] = "/switch/kezplez-nx/package1/Secure_Monitor.bin\0";
 const char final_keyfile_path[256] = "/prod.keys\0";
 

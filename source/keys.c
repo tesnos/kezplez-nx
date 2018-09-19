@@ -134,7 +134,13 @@ const char KEYBLOB_SEEDS[0x20][0x10] = {
 	"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 };
 
+const char rsa_kek_seed_3[0x10] = "\xE5\x4D\x9A\x02\xF0\x4F\x5F\xA8\xAD\x76\x0A\xF6\x32\x95\x59\xBB";
+const char rsa_kek_mask_0[0x10] = "\x4D\x87\x09\x86\xC4\x5D\x20\x72\x2F\xBA\x10\x53\xDA\x92\xE8\xA9";
+
 FILE* keyfile;
+
+char hekate_tsecdump_path_full[512];
+char hekate_fusedump_path_full[512];
 
 
 void find_via_hash(char* data, const char* keyhash, int keysize, int datasize, char* resultkey)
@@ -266,8 +272,11 @@ void get_tsec_sbk()
 	char tsec_key_hex[KEY_SIZES[0x01] * 2];
 	
 	debug_log("opening tsec and sbk\n");
-	FILE* fusefile = fopen(hekate_fusedump_path, FMODE_READ);
-	FILE* tsecfile = fopen(hekate_tsecdump_path, FMODE_READ);
+	debug_log("tsec path: %s  and fuse path: %s\n", hekate_tsecdump_path_full, hekate_fusedump_path_full);
+	FILE* fusefile = fopen(hekate_fusedump_path_full, FMODE_READ);
+	FILE* tsecfile = fopen(hekate_tsecdump_path_full, FMODE_READ);
+	if (fusefile == NULL) { debug_log("Failed to open fusefile\n"); }
+	if (tsecfile == NULL) { debug_log("Failed to open tsecfile\n"); }
 	
 	fseek(fusefile, 0, SEEK_SET);
 	fseek(fusefile, 0xA4, SEEK_SET);

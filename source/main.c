@@ -52,6 +52,15 @@ int main(int argc, char** argv)
 	appstate.state_id = 0;
 	appstate.progress = 0;
 	
+	//dump locating
+	get_hekate_dump_prefix();
+	prepend_hdp((char*) hekate_fusedump_path, hekate_fusedump_path_full);
+	prepend_hdp((char*) hekate_tsecdump_path, hekate_tsecdump_path_full);
+	prepend_hdp((char*) hekate_boot0_path, hekate_boot0_path_full);
+	prepend_hdp((char*) hekate_package2_decrypted_path, hekate_package2_decrypted_path_full);
+	prepend_hdp((char*) hekate_package2_ini1_path, hekate_package2_ini1_path_full);
+	prepend_hdp((char*) hekate_package2_kernel_path, hekate_package2_kernel_path_full);
+	
 	//hactool init
 	debug_log("loading in tsec and sbk\n");
 	get_tsec_sbk();

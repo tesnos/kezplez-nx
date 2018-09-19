@@ -4,18 +4,22 @@
 const char boot0_path[256] = "/switch/kezplez-nx/boot0.bin\0";
 const char package1_dir_path[256] = "/switch/kezplez-nx/package1\0";
 const char package1_path[256] = "/switch/kezplez-nx/package1.bin\0";
-const char hekate_boot0_path[256] = "/Backup/BOOT0\0";
+const char hekate_boot0_path[256] = "/BOOT0\0";
 const char bcpkg_21_path[256] = "/switch/kezplez-nx/BCPKG_21_NormalMain.bin\0";
 const char package2_dir_path[256] = "/switch/kezplez-nx/package2\0";
 const char package2_path[256] = "/switch/kezplez-nx/package2.bin\0";
-const char hekate_package2_decrypted_path[256] = "/Backup/pkg2/pkg2_decr.bin\0";
+const char hekate_package2_decrypted_path[256] = "/pkg2/pkg2_decr.bin\0";
 const char package2_decrypted_path[256] = "/switch/kezplez-nx/package2/Decrypted.bin\0";
-const char hekate_package2_ini1_path[256] = "/Backup/pkg2/ini1.bin\0";
+const char hekate_package2_ini1_path[256] = "/pkg2/ini1.bin\0";
 const char package2_ini1_path[256] = "/switch/kezplez-nx/package2/INI1.bin\0";
 const char package2_ini1_dir_path[256] = "/switch/kezplez-nx/ini1\0";
-
-const char hekate_package2_kernel_path[256] = "/Backup/pkg2/kernel.bin\0";
+const char hekate_package2_kernel_path[256] = "/pkg2/kernel.bin\0";
 const char package2_kernel_path[256] = "/switch/kezplez-nx/package2/Kernel.bin\0";
+
+char hekate_boot0_path_full[512];
+char hekate_package2_decrypted_path_full[512];
+char hekate_package2_ini1_path_full[512];
+char hekate_package2_kernel_path_full[512];
 
 char BOOT0_DATA[BOOT0_SIZE];
 
@@ -66,7 +70,9 @@ void dump_bis_partition(const char* filepath, u32 partition_id)
 
 void dump_boot0(application_ctx* appstate)
 {
-	FILE* hekate_boot0_f = fopen(hekate_boot0_path, FMODE_READ);
+	debug_log("boot0 path: %s\n", hekate_boot0_path_full);
+	FILE* hekate_boot0_f = fopen(hekate_boot0_path_full, FMODE_READ);
+	
 	if (hekate_boot0_f != NULL) { appstate->boot0_is_from_hekate = true; }
 	else { appstate->boot0_is_from_hekate = false; }
 	
@@ -98,9 +104,10 @@ void dump_boot0(application_ctx* appstate)
 
 void dump_bcpkg_21(application_ctx* appstate)
 {
-	FILE* hekate_pkg2_f = fopen(hekate_package2_decrypted_path, FMODE_READ);
-	FILE* hekate_ini1_f = fopen(hekate_package2_ini1_path, FMODE_READ);
-	FILE* hekate_kern_f = fopen(hekate_package2_kernel_path, FMODE_READ);
+	debug_log("pkg2_decrypted path: %s pkg2_ini1 path: %s pkg2_kernel path: %s\n", hekate_package2_decrypted_path_full, hekate_package2_ini1_path_full, hekate_package2_kernel_path_full);
+	FILE* hekate_pkg2_f = fopen(hekate_package2_decrypted_path_full, FMODE_READ);
+	FILE* hekate_ini1_f = fopen(hekate_package2_ini1_path_full, FMODE_READ);
+	FILE* hekate_kern_f = fopen(hekate_package2_kernel_path_full, FMODE_READ);
 	
 	if (hekate_pkg2_f != NULL && hekate_ini1_f != NULL && hekate_kern_f != NULL)
 	{
@@ -156,38 +163,6 @@ void dump_bcpkg_21(application_ctx* appstate)
 	
 	debug_log("package2 Dumped.\n");
 }
-
-// void extract_package2_simple(application_ctx* appstate)
-// {
-	// FILE* hekate_boot0_f = fopen(hekate_boot0_path, FMODE_READ);
-	// if (hekate_boot0_f != NULL) { appstate->boot0_is_from_hekate = true; }
-	// else { appstate->boot0_is_from_hekate = false; }
-	
-	// if (appstate->boot0_is_from_hekate)
-	// {
-		// debug_log("BOOT0 was duped via hekate so copying it from there\n");
-		// FILE* real_boot0_f = fopen(boot0_path, FMODE_WRITE);
-		
-		// fseek(hekate_boot0_f, 0, SEEK_END);
-		// int boot0_temp_size = ftell(hekate_boot0_f);
-		// fseek(hekate_boot0_f, 0, SEEK_SET);
-		
-		// char* boot0_temp_buf = malloc(boot0_temp_size);
-		// fread(boot0_temp_buf, boot0_temp_size, 1, hekate_boot0_f);
-		// fwrite(boot0_temp_buf, boot0_temp_size, 1, real_boot0_f);
-		
-		// fclose(real_boot0_f);
-		// fclose(hekate_boot0_f);
-		// free(boot0_temp_buf);
-	// }
-	// else
-	// {
-		// debug_log("Dumping BOOT0 via fs because it was not dumped from hekate\n");
-		// dump_bis_partition(boot0_path, 0);
-	// }
-	
-	// debug_log("BOOT0 Dumped.\n");
-// }
 
 void extract_package2_simple(application_ctx* appstate)
 {

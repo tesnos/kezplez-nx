@@ -29,6 +29,12 @@ extern const char KEY_HASHES[0x13][32];
 //As of right now, only 0 - 4 are used but there will be more in future firmwares
 extern const char KEYBLOB_SEEDS[0x20][0x10];
 
+extern const char rsa_kek_seed_3[0x10];
+extern const char rsa_kek_mask_0[0x10];
+
+extern char hekate_tsecdump_path_full[512];
+extern char hekate_fusedump_path_full[512];
+
 
 
 /**

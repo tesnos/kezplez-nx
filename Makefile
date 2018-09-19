@@ -31,8 +31,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 #     - <libnx folder>/default_icon.jpg
 #---------------------------------------------------------------------------------
 APP_TITLE	:=	kezplez-nx
-APP_AUTHOR	:=	tesnos6921
-APP_VERSION	:=	1.1
+APP_AUTHOR	:=	tesnos6921, shchmue
+APP_VERSION	:=	1.2
 
 TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 BUILD		:=	build

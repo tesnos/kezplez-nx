@@ -42,6 +42,11 @@ extern const char package2_ini1_dir_path[256];
 extern const char hekate_package2_kernel_path[256];
 extern const char package2_kernel_path[256];
 
+extern char hekate_boot0_path_full[512];
+extern char hekate_package2_decrypted_path_full[512];
+extern char hekate_package2_ini1_path_full[512];
+extern char hekate_package2_kernel_path_full[512];
+
 
 /**
  * @brief Dump a BIS partition from the system flash to the sd card
