@@ -17,6 +17,8 @@ const char package2_ini1_dir_path[256] = "/switch/kezplez-nx/ini1\0";
 const char hekate_package2_kernel_path[256] = "/Backup/pkg2/kernel.bin\0";
 const char package2_kernel_path[256] = "/switch/kezplez-nx/package2/Kernel.bin\0";
 
+char BOOT0_DATA[BOOT0_SIZE];
+
 
 void dump_bis_partition(const char* filepath, u32 partition_id)
 {
@@ -155,9 +157,48 @@ void dump_bcpkg_21(application_ctx* appstate)
 	debug_log("package2 Dumped.\n");
 }
 
-void extract_package2(application_ctx* appstate)
+// void extract_package2_simple(application_ctx* appstate)
+// {
+	// FILE* hekate_boot0_f = fopen(hekate_boot0_path, FMODE_READ);
+	// if (hekate_boot0_f != NULL) { appstate->boot0_is_from_hekate = true; }
+	// else { appstate->boot0_is_from_hekate = false; }
+	
+	// if (appstate->boot0_is_from_hekate)
+	// {
+		// debug_log("BOOT0 was duped via hekate so copying it from there\n");
+		// FILE* real_boot0_f = fopen(boot0_path, FMODE_WRITE);
+		
+		// fseek(hekate_boot0_f, 0, SEEK_END);
+		// int boot0_temp_size = ftell(hekate_boot0_f);
+		// fseek(hekate_boot0_f, 0, SEEK_SET);
+		
+		// char* boot0_temp_buf = malloc(boot0_temp_size);
+		// fread(boot0_temp_buf, boot0_temp_size, 1, hekate_boot0_f);
+		// fwrite(boot0_temp_buf, boot0_temp_size, 1, real_boot0_f);
+		
+		// fclose(real_boot0_f);
+		// fclose(hekate_boot0_f);
+		// free(boot0_temp_buf);
+	// }
+	// else
+	// {
+		// debug_log("Dumping BOOT0 via fs because it was not dumped from hekate\n");
+		// dump_bis_partition(boot0_path, 0);
+	// }
+	
+	// debug_log("BOOT0 Dumped.\n");
+// }
+
+void extract_package2_simple(application_ctx* appstate)
 {
-	if (!appstate->pkg2_is_from_hekate)
+	debug_log("Hello from extract_package2_simple!\n");
+	
+	
+	if (appstate->pkg2_is_from_hekate)
+	{
+		debug_log("No need to extract package2 from BCPKG_21 because it was dumped from hekate\n");
+	}
+	else
 	{
 		debug_log("Extracting package2 from BCPKG_21 because it was not dumped from hekate\n");
 		FILE* BCPKG_21_f = fopen(bcpkg_21_path, FMODE_READ);
@@ -225,7 +266,6 @@ void extract_package1_encrypted_butagain(application_ctx* appstate)
 	FILE* PKG11_f = fopen(package1_path, FMODE_WRITE);
 	
 	char PKG11_DATA[PKG11_SIZE];
-	char BOOT0_DATA[BOOT0_SIZE];
 	
 	fread(BOOT0_DATA, BOOT0_SIZE, 1, BOOT0_f);
 	memcpy(PKG11_DATA, BOOT0_DATA + PKG11_REALBEGIN, PKG11_SIZE);
@@ -241,25 +281,53 @@ void decrypt_package1(application_ctx* appstate)
 {
 	debug_log("Decrypting package1...\n");
 	hactool_init(appstate);
-	hactool_ctx_t tool_ctx = *(&appstate->tool_ctx);
-	tool_ctx.file = fopen(boot0_path, FMODE_READ);
+	hactool_ctx_t* tool_ctx = &appstate->tool_ctx;
 	
 	debug_log("Retrieving keyblobs from boot0...\n");
 	nca_keyset_t new_keyset;
-	memcpy(&new_keyset, &tool_ctx.settings.keyset, sizeof(new_keyset));
-	for (unsigned int i = 0; i < 0x10; i++) {
-		if (tool_ctx.settings.keygen_sbk[i] != 0) {
-			memcpy(new_keyset.secure_boot_key, tool_ctx.settings.keygen_sbk, 0x10);
-		}
-	}
-	for (unsigned int i = 0; i < 0x10; i++) {
-		if (tool_ctx.settings.keygen_tsec[i] != 0) {
-			memcpy(new_keyset.tsec_key, tool_ctx.settings.keygen_tsec, 0x10);
-		}
-	}
-	for (unsigned int i = 0; tool_ctx.file != NULL && i < 0x20; i++) {
-		fseek(tool_ctx.file, 0x180000 + 0x200 * i, SEEK_SET);
-		fread(&new_keyset.encrypted_keyblobs[i], sizeof(new_keyset.encrypted_keyblobs[i]), 1, tool_ctx.file);
+	memcpy(&new_keyset, &tool_ctx->settings.keyset, sizeof(new_keyset));
+	
+	// for (unsigned int i = 0; i < 0x10; i++) {
+		// if (tool_ctx->settings.keygen_sbk[i] != 0) {
+			// memcpy(new_keyset.secure_boot_key, tool_ctx->settings.keygen_sbk, 0x10);
+		// }
+	// }
+	// for (unsigned int i = 0; i < 0x10; i++) {
+		// if (tool_ctx->settings.keygen_tsec[i] != 0) {
+			// memcpy(new_keyset.tsec_key, tool_ctx->settings.keygen_tsec, 0x10);
+		// }
+	// }
+	
+	for (unsigned int i = 0; i < 0x20; i++) {
+		// debug_log("keyblob_key_source_%02x = ", i);
+		// for (unsigned int j = 0; j < 0x10; j++)
+		// {
+			// debug_log("%02x", &appstate->tool_ctx.settings.keyset.keyblob_key_sources[i][j]);
+		// }
+		// debug_log("\n");
+		
+		// debug_log("copied_keyblob_key_source_%02x = ", i);
+		// for (unsigned int j = 0; j < 0x10; j++)
+		// {
+			// debug_log("%02x", new_keyset.keyblob_key_sources[i][j]);
+		// }
+		// debug_log("\n");
+		
+		// debug_log("encrypted_keyblob_%02x = ", i);
+		// for (unsigned int j = 0; j < 0xB0; j++)
+		// {
+			// debug_log("%02x", BOOT0_DATA[0x180000 + (0x200 * i) + j]);
+		// }
+		// debug_log("\n");
+		
+		memcpy(new_keyset.encrypted_keyblobs[i], BOOT0_DATA + 0x180000 + (0x200 * i), 0xB0);
+		
+		// debug_log("copied_encrypted_keyblob_%02x = ", i);
+		// for (unsigned int j = 0; j < 0xB0; j++)
+		// {
+			// debug_log("%02x", new_keyset.encrypted_keyblobs[i][j]);
+		// }
+		// debug_log("\n");
 	}
 	
 	debug_log("Keyblobs obtained, deriving all possible keys...\n");
@@ -267,19 +335,18 @@ void decrypt_package1(application_ctx* appstate)
 	debug_log("Saving newly obtained keys...\n");
 	update_keyfile(0, &new_keyset);
 	
-	fclose(tool_ctx.file);
 	
 	//actual package1 decryption
 	debug_log("Preparing for package1 decryption...\n");
 	hactool_init(appstate);
-	tool_ctx.file = fopen(package1_path, FMODE_READ);
-	tool_ctx.file_type = FILETYPE_PACKAGE1;
-	filepath_set(&tool_ctx.settings.pk11_dir_path, package1_dir_path);
+	tool_ctx->file = fopen(package1_path, FMODE_READ);
+	tool_ctx->file_type = FILETYPE_PACKAGE1;
+	filepath_set(&tool_ctx->settings.pk11_dir_path, package1_dir_path);
 	
 	pk11_ctx_t pk11_ctx;
 	memset(&pk11_ctx, 0, sizeof(pk11_ctx));
-	pk11_ctx.file = tool_ctx.file;
-	pk11_ctx.tool_ctx = &tool_ctx;
+	pk11_ctx.file = tool_ctx->file;
+	pk11_ctx.tool_ctx = tool_ctx;
 	debug_log("Decrypting package1...\n");
 	pk11_process(&pk11_ctx);
 	
@@ -287,7 +354,7 @@ void decrypt_package1(application_ctx* appstate)
 		free(pk11_ctx.pk11);
 	}
 	
-	fclose(tool_ctx.file);
+	fclose(tool_ctx->file);
 	debug_log("Package1 Decrypted!\n");
 }
 
@@ -296,9 +363,9 @@ void extract_package2_contents(application_ctx* appstate)
 	debug_log("Extracting package2...\n");
 	hactool_ctx_t tool_ctx = *(&appstate->tool_ctx);
 	
-	hactool_init(appstate);
-	pki_derive_keys(&tool_ctx.settings.keyset);
-	update_keyfile(1, &tool_ctx.settings.keyset);
+	// hactool_init(appstate);
+	// pki_derive_keys(&tool_ctx.settings.keyset);
+	// update_keyfile(1, &tool_ctx.settings.keyset);
 	
 	hactool_init(appstate);
 	

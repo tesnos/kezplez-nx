@@ -5,9 +5,8 @@
 ## Usage
 YOU MUST HAVE DUMPED YOUR FUSES AND TSEC_KEYS BEFORE USING THIS.
 
-Dumping tsec_keys will be an option in the 3.3 release of CTCaer's hekate, for now you must use the build provided in the releases.
 
-1. Launch CTCaer's hekate mod, and dump your fuses (not kfuses!) and tsec_keys by going through the menu
+1. Launch CTCaer's hekate mod (v4.0+), and dump your fuses (not kfuses!) and tsec_keys by going through the menu
 * For fuses, Console Info -> Print fuse info -> Press power button
 * For tsec_keys, Console Info -> Print TSEC keys -> Press power button
 ### IF YOU ARE ON 1.0.0 - 2.3.0, ALSO DO THE FOLLOWING IN HEKATE:
@@ -30,12 +29,11 @@ In the future, there may be features such as uploading keys to a site like paste
 See LICENSE.md
 
 ## Building
-Requires libnx + libcurl and libfreetype from the devkitpro pacman switch-portlibs.
+Requires libnx (v1.3.1+) + libcurl and libfreetype from the devkitpro pacman switch-portlibs.
 Just type `make` and you'll have yourself a fresh build.
 
-Note: requires very latest libnx (build from source, 1.3.0 is too old)
-
 ## Thanks to...
+### Extra special thanks to: @shchmue for helping to update the code and fix some critical bugs!
 * SciresM for hactool
 * @Stay off my cock#6239 (Shadów on the ReSwitched discord) for knowing you can generate keys for firmwares with only their keyblob seeds and updating the original kezplez to make it much better
 * mbedtls

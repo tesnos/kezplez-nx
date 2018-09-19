@@ -2,6 +2,7 @@
 
 
 CURL* curl = NULL;
+struct MemoryStruct chunk;
 
 
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
@@ -31,7 +32,6 @@ void upload_keyfile(application_ctx* appstate)
 {
 	CURLcode res = CURLE_OK;
 	
-	struct MemoryStruct chunk;
 	char* data_to_post;
 	
 	chunk.memory = malloc(1);
@@ -47,7 +47,7 @@ void upload_keyfile(application_ctx* appstate)
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "no-agent/2.0");
 		
-		keyfile = fopen(keyfile_path, FMODE_READ);
+		FILE* keyfile = fopen(keyfile_path, FMODE_READ);
 		fseek(keyfile, 0, SEEK_END);
 		int keyfilesize = ftell(keyfile);
 		fseek(keyfile, 0, SEEK_SET);

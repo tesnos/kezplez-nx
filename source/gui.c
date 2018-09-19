@@ -65,8 +65,8 @@ void gui_drawframe(application_ctx* appstate)
 	snprintf(a, 32, "%02i/%02i", appstate->progress, PROGRESS_TOTAL);
 	graphics_draw_text(50, 18, graphics_get_theme_color_font(), a);
 	
-	graphics_draw_rect(50, 60, screenwidth - 50, 50, 0xFF2D2D2D);
-	graphics_draw_rect(50, 60, ((screenwidth - 50) / PROGRESS_TOTAL) * appstate->progress, 50, COL_GREEN);
+	graphics_draw_rect(50, 40, screenwidth - 100, 35, 0xFF2D2D2D);
+	graphics_draw_rect(50, 40, (int) ((float) (screenwidth - 100) * ((float) appstate->progress / (float) PROGRESS_TOTAL)), 35, COL_GREEN);
 }
 
 void gui_endframe()

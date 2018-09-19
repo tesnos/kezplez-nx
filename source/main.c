@@ -33,22 +33,33 @@ int main(int argc, char** argv)
 {
 	memset(&appstate, 0x00, sizeof(appstate));
 	
+	//clears out/creates log and keyfile
+	fclose(fopen(log_path, FMODE_WRITE));
+	fclose(fopen(keyfile_path, FMODE_WRITE));
+	
 	//app init
+	debug_log("general application initialization\n");
 	mkdir("/switch/kezplez-nx\0", 777);
+	mkdir(package1_dir_path, 777);
+	mkdir(package2_dir_path, 777);
 	gui_init();
 	
 	//curl init
 	//upload_init();
 	
 	//internal variable inits
+	debug_log("setting up internal state\n");
 	appstate.state_id = 0;
 	appstate.progress = 0;
 	
 	//hactool init
+	debug_log("loading in tsec and sbk\n");
 	get_tsec_sbk();
+	debug_log("preparing hactool\n");
 	hactool_init(&appstate);
 	
 	
+	debug_log("main loop begins\n");
 	while (appletMainLoop())
 	{
 		hidScanInput();
@@ -62,6 +73,7 @@ int main(int argc, char** argv)
 			{
 				appstate.state_id = 1;
 				appstate.step_completed = true;
+				appstate.progress = 0;
 			}
 		}
 		
@@ -101,7 +113,7 @@ int main(int argc, char** argv)
 			
 			if (appstate.progress == 3)
 			{
-				step_thread = util_thread_func(extract_package2, &appstate);
+				step_thread = util_thread_func(extract_package2_simple, &appstate);
 			}
 			
 			if (appstate.progress == 4)

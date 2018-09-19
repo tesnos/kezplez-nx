@@ -70,7 +70,7 @@ void dump_bcpkg_21(application_ctx* appstate);
  * 
  * @param appstate State of the application, is used to check if the dump is from hekate
  */
-void extract_package2(application_ctx* appstate);
+void extract_package2_simple(application_ctx* appstate);
 
 /**
  * @brief Extracts package1 in its encrypted form from BOOT0

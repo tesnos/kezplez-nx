@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #include "extkeys.h"
 #include "nca.h"
@@ -22,7 +23,7 @@
 #define PROGRESS_TOTAL 15
 
 
-//#define LOGGING_ENABLED
+#define LOGGING_ENABLED
 #ifdef LOGGING_ENABLED
 extern const char log_path[256];
 #endif
@@ -68,10 +69,12 @@ Thread* util_thread_func(void (*func)(application_ctx*), application_ctx* appsta
 /**
  * @brief The function to actually be threaded, this will run the func
  * 
- * @param func Function pointer for the function to run, it should take an application_ctx as an argument
- * @param appstate The application_ctx to pass to the function
+ * @param arg Pointer to all the arguments to the function
  */
-void util_thread_wrapper(void (*func)(application_ctx*), application_ctx* appstate);
+// void util_thread_wrapper(void* args);
+void thread_dummy_run(application_ctx* appstate);
+void thread_dummy(void* args);
+void thread_tester(void* args);
 
 /**
  * @brief Reads 4 bytes from targetfile and returns their value as a little endian, unsigned 32-bit integer

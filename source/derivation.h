@@ -3,9 +3,11 @@
 
 #include "util.h"
 #include "keys.h"
+#include "packages12.h"
 
 #include "pki.h"
 
+//extern const char package1_path[256];
 extern const char secmon_path[256];
 extern const char final_keyfile_path[256];
 

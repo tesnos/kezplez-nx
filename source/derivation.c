@@ -1,6 +1,7 @@
 #include "derivation.h"
 
 
+//const char package1_path[256] = "/switch/kezplez-nx/package1.bin\0";
 const char secmon_path[256] = "/switch/kezplez-nx/package1/Secure_Monitor.bin\0";
 const char final_keyfile_path[256] = "/prod.keys\0";
 
@@ -8,7 +9,7 @@ const char final_keyfile_path[256] = "/prod.keys\0";
 void derive_part0(application_ctx* appstate)
 {
 	debug_log("Getting keys from package1 code...\n");
-	FILE* PKG11_f = fopen(secmon_path, FMODE_READ);
+	FILE* PKG11_f = fopen(package1_path, FMODE_READ);
 	
 	fseek(PKG11_f, 0, SEEK_END);
 	int PKG11_TEMP_SIZE = ftell(PKG11_f);
@@ -60,6 +61,25 @@ void derive_part1(application_ctx* appstate)
 	find_and_add_key(TZ_DATA, 0x08, TZ_SIZE);
 	
 	free(TZ_DATA);
+	
+	hactool_init(appstate);
+	pki_derive_keys(&appstate->tool_ctx.settings.keyset);
+	
+	debug_log("package2_key_source = ");
+	for (unsigned int j = 0; j < 0x20; j++)
+	{
+		debug_log("%02x", &appstate->tool_ctx.settings.keyset.package2_key_source[j]);
+	}
+	debug_log("\n");
+	
+	update_keyfile(1, &appstate->tool_ctx.settings.keyset);
+	
+	debug_log("package2_key_00 = ");
+	for (unsigned int j = 0; j < 0x20; j++)
+	{
+		debug_log("%02x", &appstate->tool_ctx.settings.keyset.package2_keys[0][j]);
+	}
+	debug_log("\n");
 }
 
 void final_derivation(application_ctx* appstate)

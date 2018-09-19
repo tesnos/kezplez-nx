@@ -213,7 +213,7 @@ void add_to_key_file_sized_indexed(const char* keyname, char* keycontent, int ke
 
 void find_and_add_key(char* data, int keyid, int datasize)
 {
-	char key[KEY_SIZES[keyid]];
+	char key[KEY_SIZES[keyid] * 2];
 	find_via_hash(data, KEY_HASHES[keyid], KEY_SIZES[keyid], datasize, key);
 	
 	keyfile = safe_open_key_file();
@@ -226,7 +226,7 @@ void add_keyset(char** keyset_array, int keyset_id)
 {
 	int keyset_size = KEYSET_SIZES[keyset_id];
 	const char* keyset_name = KEYSET_NAMES[keyset_id];
-	char hexkey[keyset_size * 2];
+	char hexkey[keyset_size * 3];
 	char real_keyset_array[0x20][keyset_size];
 	memcpy(real_keyset_array, keyset_array, 0x20 * keyset_size);
 	
@@ -243,7 +243,7 @@ void add_keyset_key_area(char** keyset_key_area_array, int keyset_id, int key_ar
 {
 	int keyset_size = KEYSET_SIZES[keyset_id];
 	const char* keyset_name = KEYSET_NAMES[keyset_id];
-	char hexkey[keyset_size * 2];
+	char hexkey[keyset_size * 3];
 	char real_keyset_array[0x20][0x3][keyset_size];
 	memcpy(real_keyset_array, keyset_key_area_array, 0x20 * 0x3 * keyset_size);
 	
@@ -258,13 +258,14 @@ void add_keyset_key_area(char** keyset_key_area_array, int keyset_id, int key_ar
 
 void get_tsec_sbk()
 {
-	FILE* keyfile = safe_open_key_file();
+	keyfile = safe_open_key_file();
 	
 	char sbk[KEY_SIZES[0x00]];
 	char tsec_key[KEY_SIZES[0x01]];
 	char sbk_hex[KEY_SIZES[0x00] * 2];
 	char tsec_key_hex[KEY_SIZES[0x01] * 2];
 	
+	debug_log("opening tsec and sbk\n");
 	FILE* fusefile = fopen(hekate_fusedump_path, FMODE_READ);
 	FILE* tsecfile = fopen(hekate_tsecdump_path, FMODE_READ);
 	
@@ -272,16 +273,21 @@ void get_tsec_sbk()
 	fseek(fusefile, 0xA4, SEEK_SET);
 	fseek(tsecfile, 0, SEEK_SET);
 	
+	debug_log("reading keys\n");
 	fread(sbk, KEY_SIZES[0x00], 1, fusefile);
 	fread(tsec_key, KEY_SIZES[0x01], 1, tsecfile);
 	
+	debug_log("hexlifying...\n");
 	hex_of_key(sbk, KEY_SIZES[0x00], sbk_hex);
+	debug_log("adding to the keyfile\n");
 	add_to_key_file_sized(KEY_NAMES[0x00], sbk_hex, KEY_SIZES[0x00]);
 	
+	debug_log("over and over\n");
 	hex_of_key(tsec_key, KEY_SIZES[0x01], tsec_key_hex);
 	add_to_key_file_sized(KEY_NAMES[0x01], tsec_key_hex, KEY_SIZES[0x01]);
 	
 	
+	debug_log("cleanup\n");
 	fclose(fusefile);
 	fclose(tsecfile);
 	
@@ -306,11 +312,11 @@ void update_keyfile(int stage, nca_keyset_t* keyset)
 		debug_log("Adding keyset %sxx to the key file\n", "master_key_");
 		add_keyset((char**) keyset->master_keys, 0x04);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "package1_key");
+		debug_log("Adding keyset %sxx to the key file\n", "package1_key_");
 		add_keyset((char**) keyset->package1_keys, 0x05);
 	}
 	
-	if (stage == 1)
+	else if (stage == 1)
 	{
 		debug_log("Adding keyset %sxx to the key file\n", "package2_key_");
 		add_keyset((char**) keyset->package2_keys, 0x06);
@@ -319,7 +325,7 @@ void update_keyfile(int stage, nca_keyset_t* keyset)
 		add_keyset((char**) keyset->titlekeks, 0x07);
 	}
 	
-	if (stage == 2)
+	else if (stage == 2)
 	{
 		debug_log("Adding %s to the key file\n", "encrypted_header_key");
 		char encrypted_header_key_hex[KEY_SIZES[0x11] * 2];
@@ -341,6 +347,5 @@ void update_keyfile(int stage, nca_keyset_t* keyset)
 		add_keyset_key_area((char**) keyset->key_area_keys, 0x0A, 0x02);
 	}
 	
-	fflush(keyfile);
 	fclose(keyfile);
 }
