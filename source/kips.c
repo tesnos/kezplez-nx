@@ -148,7 +148,7 @@ char* kip_get_full(FILE* kipfile, int* kipsize)
 
 void extract_kip1s(application_ctx* appstate)
 {
-	debug_log("Decompressing spl kip1...\n");
+	debug_log_toscreen(appstate, "Decompressing spl kip1...\n");
 	
 	FILE* spl_f = fopen(spl_path, FMODE_READ);
 	FILE* decomp_spl_f = fopen(decompressed_spl_path, FMODE_WRITE);
@@ -162,7 +162,7 @@ void extract_kip1s(application_ctx* appstate)
 	fclose(decomp_spl_f);
 	fclose(spl_f);
 	
-	debug_log("Decompressing FS kip1...\n");
+	debug_log_toscreen(appstate, "Decompressing FS kip1...\n");
 	
 	FILE* FS_f = fopen(FS_path, FMODE_READ);
 	FILE* decomp_FS_f = fopen(decompressed_FS_path, FMODE_WRITE);
@@ -179,7 +179,7 @@ void extract_kip1s(application_ctx* appstate)
 
 void derive_part2_spl(application_ctx* appstate)
 {
-	debug_log("Opening decompressed spl kip1...\n");
+	debug_log_toscreen(appstate, "Opening decompressed spl kip1...\n");
 	
 	FILE* SPL_f = fopen(decompressed_spl_path, FMODE_READ);
 	
@@ -193,7 +193,7 @@ void derive_part2_spl(application_ctx* appstate)
 	fread(SPL_DATA, SPL_SIZE, 1, SPL_f);
 	fclose(SPL_f);
 	
-	debug_log("Adding %s to the key file\n", "aes_key_generation_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "aes_key_generation_source");
 	find_and_add_key(SPL_DATA, 0x07, SPL_SIZE);  //aes_key_generation_source
 	
 	free(SPL_DATA);
@@ -201,7 +201,7 @@ void derive_part2_spl(application_ctx* appstate)
 
 void derive_part2_FS(application_ctx* appstate)
 {
-	debug_log("Opening decompressed FS kip1...\n");
+	debug_log_toscreen(appstate, "Opening decompressed FS kip1...\n");
 	
 	FILE* FS_f = fopen(decompressed_FS_path, FMODE_READ);
 	
@@ -215,21 +215,21 @@ void derive_part2_FS(application_ctx* appstate)
 	fread(FS_DATA, FS_SIZE, 1, FS_f);
 	fclose(FS_f);
 	
-	debug_log("Adding %s to the key file\n", "key_area_key_application_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "key_area_key_application_source");
 	find_and_add_key(FS_DATA, 0x09, FS_SIZE);  //key_area_key_application_source
-	debug_log("Adding %s to the key file\n", "key_area_key_ocean_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "key_area_key_ocean_source");
 	find_and_add_key(FS_DATA, 0x0A, FS_SIZE);  //key_area_key_ocean_source
-	debug_log("Adding %s to the key file\n", "key_area_key_system_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "key_area_key_system_source");
 	find_and_add_key(FS_DATA, 0x0B, FS_SIZE);  //key_area_key_system_source
-	debug_log("Adding %s to the key file\n", "sd_card_kek_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "sd_card_kek_source");
 	find_and_add_key(FS_DATA, 0x0C, FS_SIZE);  //sd_card_kek_source
-	debug_log("Adding %s to the key file\n", "sd_card_save_key_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "sd_card_save_key_source");
 	find_and_add_key(FS_DATA, 0x0D, FS_SIZE);  //sd_card_save_key_source
-	debug_log("Adding %s to the key file\n", "sd_card_nca_key_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "sd_card_nca_key_source");
 	find_and_add_key(FS_DATA, 0x0E, FS_SIZE);  //sd_card_nca_key_source
-	debug_log("Adding %s to the key file\n", "header_kek_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "header_kek_source");
 	find_and_add_key(FS_DATA, 0x0F, FS_SIZE);  //header_kek_source
-	debug_log("Adding %s to the key file\n", "header_key_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "header_key_source");
 	find_and_add_key(FS_DATA, 0x10, FS_SIZE);  //header_key_source
 	
 	free(FS_DATA);

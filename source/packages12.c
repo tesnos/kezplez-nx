@@ -78,7 +78,7 @@ void dump_boot0(application_ctx* appstate)
 	
 	if (appstate->boot0_is_from_hekate)
 	{
-		debug_log("BOOT0 was dumped via hekate so copying it from there\n");
+		debug_log_toscreen(appstate, "BOOT0 was dumped via hekate so copying it from there\n");
 		FILE* real_boot0_f = fopen(boot0_path, FMODE_WRITE);
 		
 		fseek(hekate_boot0_f, 0, SEEK_END);
@@ -95,11 +95,11 @@ void dump_boot0(application_ctx* appstate)
 	}
 	else
 	{
-		debug_log("Dumping BOOT0 via fs because it was not dumped from hekate\n");
+		debug_log_toscreen(appstate, "Dumping BOOT0 via fs because it was not dumped from hekate\n");
 		dump_bis_partition(boot0_path, 0);
 	}
 	
-	debug_log("BOOT0 Dumped.\n");
+	debug_log_toscreen(appstate, "BOOT0 Dumped.\n");
 }
 
 void dump_bcpkg_21(application_ctx* appstate)
@@ -125,7 +125,7 @@ void dump_bcpkg_21(application_ctx* appstate)
 	
 	if (appstate->pkg2_is_from_hekate)
 	{
-		debug_log("package2 was dumped via hekate so copying it from there\n");
+		debug_log_toscreen(appstate, "package2 was dumped via hekate so copying it from there\n");
 		mkdir(package2_dir_path, 777);
 		
 		for (int i = 0; i < 3; i++)
@@ -157,11 +157,11 @@ void dump_bcpkg_21(application_ctx* appstate)
 	}
 	else
 	{
-		debug_log("Dumping package2 via fs because it was not dumped from hekate\n");
+		debug_log_toscreen(appstate, "Dumping package2 via fs because it was not dumped from hekate\n");
 		dump_bis_partition(bcpkg_21_path, 21);
 	}
 	
-	debug_log("package2 Dumped.\n");
+	debug_log_toscreen(appstate, "package2 Dumped.\n");
 }
 
 void extract_package2_simple(application_ctx* appstate)
@@ -171,11 +171,11 @@ void extract_package2_simple(application_ctx* appstate)
 	
 	if (appstate->pkg2_is_from_hekate)
 	{
-		debug_log("No need to extract package2 from BCPKG_21 because it was dumped from hekate\n");
+		debug_log_toscreen(appstate, "No need to extract package2 from BCPKG_21 because it was dumped from hekate\n");
 	}
 	else
 	{
-		debug_log("Extracting package2 from BCPKG_21 because it was not dumped from hekate\n");
+		debug_log_toscreen(appstate, "Extracting package2 from BCPKG_21 because it was not dumped from hekate\n");
 		FILE* BCPKG_21_f = fopen(bcpkg_21_path, FMODE_READ);
 		FILE* PKG21_f = fopen(package2_path, FMODE_WRITE);
 		
@@ -188,13 +188,13 @@ void extract_package2_simple(application_ctx* appstate)
 		
 		fclose(PKG21_f);
 		fclose(BCPKG_21_f);
-		debug_log("Extraction complete.\n");
+		debug_log_toscreen(appstate, "Extraction complete.\n");
 	}
 }
 
 void extract_package1_encrypted(application_ctx* appstate)
 {
-	debug_log("Extracting package1 from BOOT0, the wrong way\n");
+	debug_log_toscreen(appstate, "Extracting package1 from BOOT0, the wrong way\n");
 	FILE* BOOT0_f = fopen(boot0_path, FMODE_READ);
 	FILE* PKG11_f = fopen(package1_path, FMODE_WRITE);
 	
@@ -210,7 +210,7 @@ void extract_package1_encrypted(application_ctx* appstate)
 	u32 PKG11_TARGET_STR_BE = 0x504B3131;
 	u32 PKG11_TARGET_STR_LE = 0x31314B50;
 	
-	debug_log("Searching for target string PK11...");
+	debug_log_toscreen(appstate, "Searching for target string PK11...");
 	
 	for (; PKG11_SEARCH_POS < PKG11_SEARCH_END; PKG11_SEARCH_POS += 4)
 	{
@@ -222,7 +222,7 @@ void extract_package1_encrypted(application_ctx* appstate)
 			break;
 		}
 	}
-	if (PKG11_SEARCH_POS >= PKG11_SEARCH_END) { debug_log("Not Found! Is BOOT0 corrupt?\n"); }
+	if (PKG11_SEARCH_POS >= PKG11_SEARCH_END) { debug_log_toscreen(appstate, "Not Found! Is BOOT0 corrupt?\n"); }
 	
 	memcpy(PKG11_DATA, PKG11_LOC, PKG11_SIZE);
 	fwrite(PKG11_DATA, PKG11_SIZE, 1, PKG11_f);
@@ -230,12 +230,12 @@ void extract_package1_encrypted(application_ctx* appstate)
 	fclose(PKG11_f);
 	fclose(BOOT0_f);
 	
-	debug_log("Extraction complete.\n");
+	debug_log_toscreen(appstate, "Extraction complete.\n");
 }
 
 void extract_package1_encrypted_butagain(application_ctx* appstate)
 {
-	debug_log("Extracting package1 from BOOT0, the right way\n");
+	debug_log_toscreen(appstate, "Extracting package1 from BOOT0, the right way\n");
 	
 	FILE* BOOT0_f = fopen(boot0_path, FMODE_READ);
 	FILE* PKG11_f = fopen(package1_path, FMODE_WRITE);
@@ -249,16 +249,16 @@ void extract_package1_encrypted_butagain(application_ctx* appstate)
 	fclose(PKG11_f);
 	fclose(BOOT0_f);
 	
-	debug_log("Extraction complete.\n");
+	debug_log_toscreen(appstate, "Extraction complete.\n");
 }
 
 void decrypt_package1(application_ctx* appstate)
 {
-	debug_log("Decrypting package1...\n");
+	debug_log_toscreen(appstate, "Decrypting package1...\n");
 	hactool_init(appstate);
 	hactool_ctx_t* tool_ctx = &appstate->tool_ctx;
 	
-	debug_log("Retrieving keyblobs from boot0...\n");
+	debug_log_toscreen(appstate, "Retrieving keyblobs from boot0...\n");
 	nca_keyset_t new_keyset;
 	memcpy(&new_keyset, &tool_ctx->settings.keyset, sizeof(new_keyset));
 	
@@ -305,14 +305,14 @@ void decrypt_package1(application_ctx* appstate)
 		// debug_log("\n");
 	}
 	
-	debug_log("Keyblobs obtained, deriving all possible keys...\n");
+	debug_log_toscreen(appstate, "Keyblobs obtained, deriving all possible keys...\n");
 	pki_derive_keys(&new_keyset);
-	debug_log("Saving newly obtained keys...\n");
+	debug_log_toscreen(appstate, "Saving newly obtained keys...\n");
 	update_keyfile(0, &new_keyset);
 	
 	
 	//actual package1 decryption
-	debug_log("Preparing for package1 decryption...\n");
+	debug_log_toscreen(appstate, "Preparing for package1 decryption...\n");
 	hactool_init(appstate);
 	tool_ctx->file = fopen(package1_path, FMODE_READ);
 	tool_ctx->file_type = FILETYPE_PACKAGE1;
@@ -322,7 +322,7 @@ void decrypt_package1(application_ctx* appstate)
 	memset(&pk11_ctx, 0, sizeof(pk11_ctx));
 	pk11_ctx.file = tool_ctx->file;
 	pk11_ctx.tool_ctx = tool_ctx;
-	debug_log("Decrypting package1...\n");
+	debug_log_toscreen(appstate, "Decrypting package1...\n");
 	pk11_process(&pk11_ctx);
 	
 	if (pk11_ctx.pk11) {
@@ -330,12 +330,12 @@ void decrypt_package1(application_ctx* appstate)
 	}
 	
 	fclose(tool_ctx->file);
-	debug_log("Package1 Decrypted!\n");
+	debug_log_toscreen(appstate, "Package1 Decrypted!\n");
 }
 
 void extract_package2_contents(application_ctx* appstate)
 {
-	debug_log("Extracting package2...\n");
+	debug_log_toscreen(appstate, "Extracting package2...\n");
 	hactool_ctx_t tool_ctx = *(&appstate->tool_ctx);
 	
 	// hactool_init(appstate);
@@ -346,7 +346,7 @@ void extract_package2_contents(application_ctx* appstate)
 	
 	if (appstate->pkg2_is_from_hekate)
 	{
-		debug_log("Package2 was from hekate, so doing ini1 extraction instead\n");
+		debug_log_toscreen(appstate, "Package2 was from hekate, so doing ini1 extraction instead\n");
 		tool_ctx.file = fopen(package2_ini1_path, FMODE_READ);
 		tool_ctx.file_type = FILETYPE_INI1;
 		filepath_set(&tool_ctx.settings.ini1_dir_path, package2_ini1_dir_path);
@@ -355,7 +355,7 @@ void extract_package2_contents(application_ctx* appstate)
 		memset(&ini1_ctx, 0, sizeof(ini1_ctx));
 		ini1_ctx.file = tool_ctx.file;
 		ini1_ctx.tool_ctx = &tool_ctx;
-		debug_log("Extracting INI1...");
+		debug_log_toscreen(appstate, "Extracting INI1...");
 		ini1_process(&ini1_ctx);
 		if (ini1_ctx.header) {
 			free(ini1_ctx.header);
@@ -363,7 +363,7 @@ void extract_package2_contents(application_ctx* appstate)
 	}
 	else
 	{
-		debug_log("Package2 was not from hekate, so doing full extraction\n");
+		debug_log_toscreen(appstate, "Package2 was not from hekate, so doing full extraction\n");
 		tool_ctx.file = fopen(package2_path, FMODE_READ);
 		tool_ctx.file_type = FILETYPE_PACKAGE2;
 		filepath_set(&tool_ctx.settings.pk21_dir_path, package2_dir_path);
@@ -373,7 +373,7 @@ void extract_package2_contents(application_ctx* appstate)
 		memset(&pk21_ctx, 0, sizeof(pk21_ctx));
 		pk21_ctx.file = tool_ctx.file;
 		pk21_ctx.tool_ctx = &tool_ctx;
-		debug_log("Extracting package2...\n");
+		debug_log_toscreen(appstate, "Extracting package2...\n");
 		pk21_process(&pk21_ctx);
 		if (pk21_ctx.sections) {
 			free(pk21_ctx.sections);
@@ -381,5 +381,5 @@ void extract_package2_contents(application_ctx* appstate)
 	}
 	
 	fclose(tool_ctx.file);
-	debug_log("Extraction Complete!\n");
+	debug_log_toscreen(appstate, "Extraction Complete!\n");
 }

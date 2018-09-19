@@ -227,7 +227,8 @@ void debug_log_toscreen(application_ctx* appstate, char* log_text, ...)
 	if (dbg_f == NULL) { return; }
 	
 	fwrite(log_buffer, strlen(log_buffer), 1, dbg_f);
-	memcpy(appstate->log_buffer, log_buffer, 256);
+	memset(appstate->log_buffer, 0x00, 256);
+	strncpy(appstate->log_buffer, log_buffer, 256);
 	
 	fflush(dbg_f);
 #endif

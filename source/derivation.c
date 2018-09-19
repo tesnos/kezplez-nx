@@ -7,7 +7,7 @@ const char final_keyfile_path[256] = "/prod.keys\0";
 
 void derive_part0(application_ctx* appstate)
 {
-	debug_log("Getting keys from package1 code...\n");
+	debug_log_toscreen(appstate, "Getting keys from package1 code...\n");
 	FILE* PKG11_f = fopen(package1_path, FMODE_READ);
 	
 	fseek(PKG11_f, 0, SEEK_END);
@@ -18,11 +18,11 @@ void derive_part0(application_ctx* appstate)
 	fread(PKG11_DATA, PKG11_TEMP_SIZE, 1, PKG11_f);
 	fclose(PKG11_f);
 	
-	debug_log("Adding %s to the key file\n", "keyblob_mac_key_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "keyblob_mac_key_source");
 	find_and_add_key(PKG11_DATA, 0x02, PKG11_TEMP_SIZE);  //keyblob_mac_key_source
-	debug_log("Adding %s to the key file\n", "keyblob_key_source_00");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "keyblob_key_source_00");
 	find_and_add_key(PKG11_DATA, 0x03, PKG11_TEMP_SIZE);  //keyblob_key_source_00
-	debug_log("Adding %s to the key file\n", "master_key_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "master_key_source");
 	find_and_add_key(PKG11_DATA, 0x04, PKG11_TEMP_SIZE);  //master_key_source
 	
 	free(PKG11_DATA);
@@ -32,7 +32,7 @@ void add_other_keyblob_seeds(application_ctx* appstate)
 {
 	FILE* keyfile = fopen(keyfile_path, FMODE_APPEND);
 	
-	debug_log("Adding keyset %sxx to the key file\n", "keyblob_key_source_");
+	debug_log_toscreen(appstate, "Adding keyset %sxx to the key file\n", "keyblob_key_source_");
 	add_keyset((char**) KEYBLOB_SEEDS, 0x00);
 	
 	fflush(keyfile);
@@ -41,7 +41,7 @@ void add_other_keyblob_seeds(application_ctx* appstate)
 
 void derive_part1(application_ctx* appstate)
 {
-	debug_log("Getting keys from TZ code...\n");
+	debug_log_toscreen(appstate, "Getting keys from TZ code...\n");
 	FILE* TZ_f = fopen(secmon_path, FMODE_READ);
 	
 	fseek(TZ_f, 0, SEEK_END);
@@ -52,11 +52,11 @@ void derive_part1(application_ctx* appstate)
 	fread(TZ_DATA, TZ_SIZE, 1, TZ_f);
 	fclose(TZ_f);
 	
-	debug_log("Adding %s to the key file\n", "package2_key_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "package2_key_source");
 	find_and_add_key(TZ_DATA, 0x05, TZ_SIZE);
-	debug_log("Adding %s to the key file\n", "aes_kek_generation_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "aes_kek_generation_source");
 	find_and_add_key(TZ_DATA, 0x06, TZ_SIZE);
-	debug_log("Adding %s to the key file\n", "titlekek_source");
+	debug_log_toscreen(appstate, "Adding %s to the key file\n", "titlekek_source");
 	find_and_add_key(TZ_DATA, 0x08, TZ_SIZE);
 	
 	free(TZ_DATA);
@@ -83,13 +83,13 @@ void derive_part1(application_ctx* appstate)
 
 void final_derivation(application_ctx* appstate)
 {
-	debug_log("Doing final derivation...\n");
+	debug_log_toscreen(appstate, "Doing final derivation...\n");
 	hactool_init(appstate);
 	pki_derive_keys(&appstate->tool_ctx.settings.keyset);
-	debug_log("Final keys derived, adding them to the keyfile...\n");
+	debug_log_toscreen(appstate, "Final keys derived, adding them to the keyfile...\n");
 	update_keyfile(2, &appstate->tool_ctx.settings.keyset);
 	
-	debug_log("Copying keyfile to real location...\n");
+	debug_log_toscreen(appstate, "Copying keyfile to real location...\n");
 	char* keydata;
 	
 	FILE* keyfile = fopen(keyfile_path, FMODE_READ);
@@ -105,5 +105,5 @@ void final_derivation(application_ctx* appstate)
 	fclose(newkeyfile);
 	free(keydata);
 	
-	debug_log("Keyfile copied, that's a wrap!\n");
+	debug_log_toscreen(appstate, "Keyfile copied, that's a wrap!\n");
 }
