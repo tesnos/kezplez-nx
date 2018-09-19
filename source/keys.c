@@ -139,7 +139,8 @@ const char rsa_kek_mask_0[0x10] = "\x4D\x87\x09\x86\xC4\x5D\x20\x72\x2F\xBA\x10\
 
 FILE* keyfile;
 
-char hekate_tsecdump_path_full[512];
+char hekate_tsecdump_old_path_full[512];
+char hekate_tsecdump_new_path_full[512];
 char hekate_fusedump_path_full[512];
 
 
@@ -272,11 +273,16 @@ void get_tsec_sbk()
 	char tsec_key_hex[KEY_SIZES[0x01] * 2];
 	
 	debug_log("opening tsec and sbk\n");
-	debug_log("tsec path: %s  and fuse path: %s\n", hekate_tsecdump_path_full, hekate_fusedump_path_full);
+	debug_log("old tsec path: %s, new tsec path: %s, and fuse path: %s\n", hekate_tsecdump_old_path_full, hekate_tsecdump_new_path_full, hekate_fusedump_path_full);
 	FILE* fusefile = fopen(hekate_fusedump_path_full, FMODE_READ);
-	FILE* tsecfile = fopen(hekate_tsecdump_path_full, FMODE_READ);
+	FILE* tsecfile = fopen(hekate_tsecdump_old_path_full, FMODE_READ);
+	if (tsecfile == NULL)
+	{
+		debug_log("Failed to open old tsecfile, trying newer one\n");
+		tsecfile = fopen(hekate_tsecdump_new_path_full, FMODE_READ);
+		if (tsecfile == NULL) { debug_log("Failed to open tsecfile\n"); }
+	}
 	if (fusefile == NULL) { debug_log("Failed to open fusefile\n"); }
-	if (tsecfile == NULL) { debug_log("Failed to open tsecfile\n"); }
 	
 	fseek(fusefile, 0, SEEK_SET);
 	fseek(fusefile, 0xA4, SEEK_SET);

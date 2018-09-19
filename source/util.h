@@ -32,7 +32,8 @@ extern const char log_path[256];
 
 extern const char keyfile_path[256];
 extern const char hekate_fusedump_path[256];
-extern const char hekate_tsecdump_path[256];
+extern const char hekate_tsecdump_old_path[256];
+extern const char hekate_tsecdump_new_path[256];
 extern char hekate_dump_prefix[256];
 
 

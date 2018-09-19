@@ -373,7 +373,7 @@ void extract_package2_contents(application_ctx* appstate)
 		memset(&pk21_ctx, 0, sizeof(pk21_ctx));
 		pk21_ctx.file = tool_ctx.file;
 		pk21_ctx.tool_ctx = &tool_ctx;
-		debug_log("Extracting package2...");
+		debug_log("Extracting package2...\n");
 		pk21_process(&pk21_ctx);
 		if (pk21_ctx.sections) {
 			free(pk21_ctx.sections);
@@ -381,5 +381,5 @@ void extract_package2_contents(application_ctx* appstate)
 	}
 	
 	fclose(tool_ctx.file);
-	debug_log("Extraction Complete!");
+	debug_log("Extraction Complete!\n");
 }

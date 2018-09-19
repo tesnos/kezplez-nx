@@ -51,11 +51,15 @@ int main(int argc, char** argv)
 	debug_log("setting up internal state\n");
 	appstate.state_id = 0;
 	appstate.progress = 0;
+	#ifdef LOGGING_ENABLED
+	memset(appstate.log_buffer, 0x00, 256);
+	#endif
 	
 	//dump locating
 	get_hekate_dump_prefix();
 	prepend_hdp((char*) hekate_fusedump_path, hekate_fusedump_path_full);
-	prepend_hdp((char*) hekate_tsecdump_path, hekate_tsecdump_path_full);
+	prepend_hdp((char*) hekate_tsecdump_old_path, hekate_tsecdump_old_path_full);
+	prepend_hdp((char*) hekate_tsecdump_new_path, hekate_tsecdump_new_path_full);
 	prepend_hdp((char*) hekate_boot0_path, hekate_boot0_path_full);
 	prepend_hdp((char*) hekate_package2_decrypted_path, hekate_package2_decrypted_path_full);
 	prepend_hdp((char*) hekate_package2_ini1_path, hekate_package2_ini1_path_full);

@@ -60,6 +60,12 @@ void gui_drawframe(application_ctx* appstate)
 	{
 		gui_draw_begininfo();
 	}
+	if (appstate->state_id == 1)
+	{
+		#ifdef LOGGING_ENABLED
+		graphics_draw_text(50, 80, graphics_get_theme_color_font(), appstate->log_buffer);
+		#endif
+	}
 	
 	char a[33]; a[32] = 0x00;
 	snprintf(a, 32, "%02i/%02i", appstate->progress, PROGRESS_TOTAL);

@@ -7,7 +7,8 @@ const char log_path[256] = "/switch/kezplez-nx/log.txt\0";
 
 const char keyfile_path[256] = "/switch/kezplez-nx/keys.txt\0";
 const char hekate_fusedump_path[256] = "/dumps/fuses.bin\0";
-const char hekate_tsecdump_path[256] = "/dumps/tsec_keys.bin\0";
+const char hekate_tsecdump_old_path[256] = "/dumps/tsec_key.bin\0";
+const char hekate_tsecdump_new_path[256] = "/dumps/tsec_keys.bin\0";
 
 bool prefix_discovered = false;
 char hekate_dump_prefix[256];
@@ -37,12 +38,31 @@ char* get_hekate_dump_prefix()
 				strcpy(hekate_dump_prefix, dirname);
 				break;
 			}
-			else if (strtol(ent->d_name, NULL, 16) > 0 && S_ISDIR(sb.st_mode)) // /backup/<eMMC serial> post-hekate 4.0
+			else if (S_ISDIR(sb.st_mode)) // /backup/<eMMC serial> post-hekate 4.0
 			{
-				strcat(dirname, "/");
-				strcat(dirname, ent->d_name);
-				strcpy(hekate_dump_prefix, dirname);
-				break;
+				bool is_valid_emmc_serial = true;
+				for (int i = 0; i < strlen(ent->d_name); i++) //checking for a proper hex string
+				{
+					bool is_number               = (ent->d_name[i] >= 0x30) && (ent->d_name[i] <= 0x39);
+					bool is_lowercase_hex_letter = (ent->d_name[i] >= 0x41) && (ent->d_name[i] <= 0x46);
+					bool is_uppercase_hex_letter = (ent->d_name[i] >= 0x61) && (ent->d_name[i] <= 0x66);
+					if (is_number || is_lowercase_hex_letter || is_uppercase_hex_letter)
+					{
+						continue;
+					}
+					else
+					{
+						is_valid_emmc_serial = false;
+					}
+				}
+				
+				if (is_valid_emmc_serial)
+				{
+					strcat(dirname, "/");
+					strcat(dirname, ent->d_name);
+					strcpy(hekate_dump_prefix, dirname);
+					break;
+				}
 			}
 		}
 		closedir(dir);
@@ -139,7 +159,7 @@ void thread_tester(void* args)
 	void (*func)(application_ctx*) = (void (*)(application_ctx*)) thread_args[1];
 	
 	usleep(100000);
-	debug_log("you dream in color-%08x-%08x-%08x\n", thread_args, appstate, func);
+	debug_log("thread started, received args are-%08x-%08x-%08x\n", thread_args, appstate, func);
 	usleep(100000);
 	
 	func(appstate);

@@ -32,7 +32,8 @@ extern const char KEYBLOB_SEEDS[0x20][0x10];
 extern const char rsa_kek_seed_3[0x10];
 extern const char rsa_kek_mask_0[0x10];
 
-extern char hekate_tsecdump_path_full[512];
+extern char hekate_tsecdump_old_path_full[512];
+extern char hekate_tsecdump_new_path_full[512];
 extern char hekate_fusedump_path_full[512];
 
 

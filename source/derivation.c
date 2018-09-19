@@ -65,18 +65,18 @@ void derive_part1(application_ctx* appstate)
 	pki_derive_keys(&appstate->tool_ctx.settings.keyset);
 	
 	debug_log("package2_key_source = ");
-	for (unsigned int j = 0; j < 0x20; j++)
+	for (unsigned int j = 0; j < 0x10; j++)
 	{
-		debug_log("%02x", &appstate->tool_ctx.settings.keyset.package2_key_source[j]);
+		debug_log("%02x", appstate->tool_ctx.settings.keyset.package2_key_source[j]);
 	}
 	debug_log("\n");
 	
 	update_keyfile(1, &appstate->tool_ctx.settings.keyset);
 	
 	debug_log("package2_key_00 = ");
-	for (unsigned int j = 0; j < 0x20; j++)
+	for (unsigned int j = 0; j < 0x10; j++)
 	{
-		debug_log("%02x", &appstate->tool_ctx.settings.keyset.package2_keys[0][j]);
+		debug_log("%02x", appstate->tool_ctx.settings.keyset.package2_keys[0][j]);
 	}
 	debug_log("\n");
 }
