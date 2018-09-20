@@ -1,3 +1,6 @@
+#ifndef FONT_H
+#define FONT_H
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <switch.h>
@@ -41,3 +44,5 @@ void font_get_text_dimensions(u32 font, const char* text, u32* width_out, u32* h
 bool font_init(void);
 
 void font_exit();
+
+#endif

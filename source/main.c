@@ -31,34 +31,33 @@ Thread* step_thread;
 
 int main(int argc, char** argv)
 {
-	//clears out/creates log and keyfile
-	remove(log_path);
-	remove(keyfile_path);
-	fclose(fopen(log_path, FMODE_WRITE));
-	fclose(fopen(keyfile_path, FMODE_WRITE));
+	util_hold_appstate(&appstate);
 	
-	//state init
+	gui_init();
 	memset(&appstate, 0x00, sizeof(appstate));
-	util_hold_appstate(&appstate); //for errors
-	//internal variable inits
-	debug_log("setting up internal state\n");
 	appstate.state_id = 0;
 	appstate.progress = 0;
 	#ifdef LOGGING_ENABLED
 	memset(appstate.log_buffer, 0x00, 256);
 	#endif
 	
+	//clears out/creates log and keyfile
+	remove(log_path);
+	remove(keyfile_path);
+	fclose(safe_open_key_file());
+	fclose(safe_fopen(log_path, FMODE_WRITE));
+	
 	//app init
 	debug_log("general application initialization\n");
 	mkdir("/switch/kezplez-nx\0", 777);
 	mkdir(package1_dir_path, 777);
 	mkdir(package2_dir_path, 777);
-	gui_init();
 	
 	//curl init
 	//upload_init();
 	
 	//dump locating
+	debug_log("locating dumps...\n");
 	get_hekate_dump_prefix();
 	prepend_hdp((char*) hekate_fusedump_path, hekate_fusedump_path_full);
 	prepend_hdp((char*) hekate_tsecdump_old_path, hekate_tsecdump_old_path_full);
@@ -71,24 +70,18 @@ int main(int argc, char** argv)
 	//hactool init
 	debug_log("loading in tsec and sbk\n");
 	get_tsec_sbk();
-	if (appstate.state_id == 0)
-	{
-		debug_log("preparing hactool\n");
-		hactool_init(&appstate);
-	}
+	// if (appstate == -1) { goto exit; }
+	debug_log("preparing hactool\n");
+	hactool_init(&appstate);
+	// if (appstate == -1) { goto exit; }
+	
 	
 	debug_log("main loop begins\n");
 	while (appletMainLoop())
 	{
 		hidScanInput();
 		u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
-		if (kDown & KEY_PLUS) break;
-		
-		//Error
-		if (appstate.state_id == -1)
-		{
-			
-		}
+		if (kDown & KEY_PLUS) { break; }
 		
 		//Beginning
 		if (appstate.state_id == 0)
@@ -209,8 +202,8 @@ int main(int argc, char** argv)
 	}
 	
 	
+// exit:;
 	//cleanup
-	//upload_exit();
 	gui_exit();
 	return 0;
 }

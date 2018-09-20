@@ -1,6 +1,6 @@
 # kezplez-nx
 ### Now with 100% more keys!!
-## The "easiest" way to get all 70+ Nintendo Switch keys to use with hactool!
+## The "easiest" way to get all 80+ Nintendo Switch keys to use with hactool!
 
 ## Usage
 YOU MUST HAVE DUMPED YOUR FUSES AND TSEC_KEYS BEFORE USING THIS.

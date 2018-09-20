@@ -15,6 +15,7 @@
 #include "pki.h"
 #include "types.h"
 
+#include "font.h"
 
 #define FMODE_READ   "rb"
 #define FMODE_WRITE  "wb"

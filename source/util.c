@@ -18,7 +18,6 @@ application_ctx* err_appstate;
 bool thread_dummied = false;
 FILE* dbg_f = NULL;
 
-
 //all credit to @shchmue for adding hekate 4.0+ support
 char* get_hekate_dump_prefix()
 {
@@ -28,7 +27,8 @@ char* get_hekate_dump_prefix()
 		struct dirent* ent;
 		char dirname[256] = "/backup";
 		dir = opendir(dirname);
-		hekate_dump_prefix[0] = 0x00;
+		hekate_dump_prefix[1] = 0x00;
+		bool found_backup = false;
 		while ((ent = readdir(dir)))
 		{
 			char statbuf[256];
@@ -42,6 +42,7 @@ char* get_hekate_dump_prefix()
 			if (strcmp(ent->d_name, "dumps") == 0 && S_ISDIR(sb.st_mode)) // /backup/dumps pre-hekate 4.0
 			{
 				strcpy(hekate_dump_prefix, dirname);
+				found_backup = true;
 				break;
 			}
 			else if (S_ISDIR(sb.st_mode)) // /backup/<eMMC serial> post-hekate 4.0
@@ -67,12 +68,13 @@ char* get_hekate_dump_prefix()
 					strcat(dirname, "/");
 					strcat(dirname, ent->d_name);
 					strcpy(hekate_dump_prefix, dirname);
+					found_backup = true;
 					break;
 				}
 			}
 		}
 		closedir(dir);
-		if (hekate_dump_prefix[0] == 0x00)
+		if (!found_backup)
 		{
 			fatal_error("Couldn't find a hekate dump directory!  Please at least dump your tsec keys and fuses before running this application.");
 		}
@@ -232,7 +234,7 @@ void hactool_init(application_ctx* appstate)
 	memset(&appstate->tool_ctx, 0, sizeof(appstate->tool_ctx));
 	appstate->tool_ctx.action = ACTION_INFO | ACTION_EXTRACT;
 	// key init
-	FILE* keyfile = safe_open_key_file();
+	FILE* keyfile = safe_fopen(keyfile_path, FMODE_READ);
 	
 	pki_initialize_keyset(&appstate->tool_ctx.settings.keyset, KEYSET_RETAIL);
 	extkeys_initialize_keyset(&appstate->tool_ctx.settings.keyset, keyfile);
@@ -261,7 +263,7 @@ void debug_log_toscreen(application_ctx* appstate, char* log_text, ...)
 	memset(appstate->log_buffer, 0x00, 256);
 	strncpy(appstate->log_buffer, log_buffer, 256);
 	
-	fclose(dbg_f);
+	fflush(dbg_f);
 #endif
 
 }
@@ -281,18 +283,26 @@ void debug_log(char* log_text, ...)
 	
 	fwrite(log_buffer, strlen(log_buffer), 1, dbg_f);
 	
-	fclose(dbg_f);
+	fflush(dbg_f);
 #endif
 
 }
 
-FILE* safe_fopen(const char* filepath, char* mode)
+FILE* safe_fopen(const char* file_path, char* mode)
 {
-	FILE* targetfile = fopen(filepath, mode);
+	FILE* targetfile = fopen(file_path, mode);
+	
 	if (targetfile == NULL)
 	{
-		fatal_error("Unable to open file: %s", filepath);
+		targetfile = fopen(file_path, FMODE_WRITE);
+		fclose(targetfile);
+		targetfile = fopen(file_path, mode);
 	}
+	if (targetfile == NULL)
+	{
+		fatal_error("Unable to open file: %s", file_path);
+	}
+	
 	return targetfile;
 }
 
@@ -312,11 +322,50 @@ void fatal_error(char* err_text, ...)
 	va_end(args);
 	
 	if (dbg_f == NULL) { dbg_f = safe_fopen(log_path, FMODE_APPEND); }
-	if (dbg_f == NULL) { return; }
+	if (dbg_f != NULL)
+	{
+		fwrite(log_buffer, strlen(log_buffer), 1, dbg_f);
+		memset(err_appstate->log_buffer, 0x00, 256);
+		strncpy(err_appstate->log_buffer, log_buffer, 256);
+		fflush(dbg_f);
+	}
 	
-	fwrite(log_buffer, strlen(log_buffer), 1, dbg_f);
-	memset(err_appstate->log_buffer, 0x00, 256);
-	strncpy(err_appstate->log_buffer, log_buffer, 256);
+	debug_log("loop not done\n");
+	while (appletMainLoop())
+	{
+		hidScanInput();
+		u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
+		if (kDown & KEY_PLUS) { break; }
+		
+		u32 screenwidth;;
+		u32 screenheight;
+		u32* framebuf_ptr = (u32*) gfxGetFramebuffer(&screenwidth, &screenheight);
+		for (int cury = 0; cury < screenheight; cury++)
+		{
+			for (int curx = 0; curx < screenwidth; curx++)
+			{
+				int framebuf_targetpos = (cury * screenwidth) + curx;
+				framebuf_ptr[framebuf_targetpos] = 0xFF000000;
+			}
+		}
+		font_drawtext(5, 10, 10, 0xFF0000FF, "ERROR");
+		font_drawtext(4, 10, 50, 0xFF0000FF, err_appstate->log_buffer);
+		gfxFlushBuffers();
+		gfxSwapBuffers();
+		gfxWaitForVsync();
+	}
+	debug_log("loop done\n");
 	
-	fclose(dbg_f);
+	font_exit();
+	debug_log("font done\n");
+
+	plExit();
+	debug_log("pl done\n");
+	gfxExit();
+	debug_log("gfx done\n");
+	setsysExit();
+	debug_log("setsys done\n");
+	
+	exit(0);
+	debug_log("applet done\n");
 }
