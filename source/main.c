@@ -41,6 +41,8 @@ int main(int argc, char** argv)
 	memset(appstate.log_buffer, 0x00, 256);
 	#endif
 	
+	mkdir("/switch/kezplez-nx\0", 777);
+	
 	//clears out/creates log and keyfile
 	remove(log_path);
 	remove(keyfile_path);
@@ -49,7 +51,6 @@ int main(int argc, char** argv)
 	
 	//app init
 	debug_log("general application initialization\n");
-	mkdir("/switch/kezplez-nx\0", 777);
 	mkdir(package1_dir_path, 777);
 	mkdir(package2_dir_path, 777);
 	

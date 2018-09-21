@@ -13,16 +13,16 @@ extern const char nokey[6];
 extern const char ZERO_KEY[0x100];
 
 //These are the names of keys we have to pull out individually
-extern const char KEY_NAMES[0x13][32];
+extern const char KEY_NAMES[0x16][32];
 
-extern const int KEY_SIZES[0x13];
+extern const int KEY_SIZES[0x16];
 
 //These are the names of keys we get in sets, ie master_key_xx
 extern const char KEYSET_NAMES[0x0B][32];
 
 extern const int KEYSET_SIZES[0x0B];
 
-extern const char KEY_HASHES[0x13][32];
+extern const char KEY_HASHES[0x16][32];
 
 //Credit for these goes to SciresM (https://raw.githubusercontent.com/Atmosphere-NX/Atmosphere/master/fusee/fusee-secondary/src/key_derivation.c)
 //but credit for the idea to use them goes to @Stay off my cock#6239 (nickname Shadów) on the reswitched Discord

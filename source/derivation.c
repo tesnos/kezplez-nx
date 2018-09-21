@@ -85,10 +85,12 @@ void final_derivation(application_ctx* appstate)
 {
 	debug_log_toscreen(appstate, "Doing final derivation...\n");
 	hactool_init(appstate);
-	pki_derive_keys(&appstate->tool_ctx.settings.keyset);
 	debug_log_toscreen(appstate, "Final keys derived, adding them to the keyfile...\n");
 	update_keyfile(2, &appstate->tool_ctx.settings.keyset);
 	
+	debug_log_toscreen(appstate, "Deriving eticket_rsa_kek...\n");
+	dump_and_decrypt_es(appstate);
+
 	debug_log_toscreen(appstate, "Copying keyfile to real location...\n");
 	char* keydata;
 	
