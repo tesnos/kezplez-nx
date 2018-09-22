@@ -33,7 +33,7 @@ void dump_and_decrypt_es(application_ctx* appstate)
     
     while ((ent = readdir(dir)))
     {
-        if ((ent->d_name[0] == '.') || (ent->d_name[strlen(ent->d_name) - 5] == 't'))
+        if (ent->d_name[0] == '.')
 		{
 			continue;
 		}
@@ -45,7 +45,7 @@ void dump_and_decrypt_es(application_ctx* appstate)
         debug_log("Checking nca header of %s\n", ent->d_name);
         nca_ctx.file = fopen(tmppath, FMODE_READ);
         nca_decrypt_header(&nca_ctx);
-        if (nca_ctx.header.title_id == 0x0100000000000033)
+        if (nca_ctx.header.title_id == 0x0100000000000033 && nca_ctx.header.content_type == 0)
         {
             debug_log_toscreen(appstate, "Found es nca. Decrypting es...\n");
             nca_process(&nca_ctx);
@@ -82,13 +82,20 @@ void dump_and_decrypt_es(application_ctx* appstate)
 	{
 		memcpy(rawkey, ES_DATA + i, KEY_SIZES[0x13]);
 		mbedtls_sha256_ret(rawkey, KEY_SIZES[0x13], digest, 0);
-		if (strncmp((char*) digest, KEY_HASHES[0x13], sizeof(digest)) == 0)
+		if (memcmp((char*) digest, KEY_HASHES[0x13], sizeof(digest)) == 0)
 		{
 			memcpy(eticket_rsa_kek_source, rawkey, KEY_SIZES[0x13]);
 			break;
 		}
 	}
 	
+    debug_log("eticket_rsa_kek_source: ");
+	for (int i = 0; i < sizeof(eticket_rsa_kek_source); i++)
+	{
+		debug_log("%02x", eticket_rsa_kek_source[i]);
+	}
+    debug_log("\n");
+
     memset(rawkey, 0x00, KEY_SIZES[0x14]);
 	memset(digest, 0x00, KEY_SIZES[0x14] * 2);
 	char eticket_rsa_kekek_source[KEY_SIZES[0x14]];
@@ -96,12 +103,19 @@ void dump_and_decrypt_es(application_ctx* appstate)
 	{
 		memcpy(rawkey, ES_DATA + i, KEY_SIZES[0x14]);
 		mbedtls_sha256_ret(rawkey, KEY_SIZES[0x14], digest, 0);
-		if (strncmp((char*) digest, KEY_HASHES[0x14], sizeof(digest)) == 0)
+		if (memcmp((char*) digest, KEY_HASHES[0x14], sizeof(digest)) == 0)
 		{
 			memcpy(eticket_rsa_kekek_source, rawkey, KEY_SIZES[0x14]);
 			break;
 		}
 	}
+
+    debug_log("eticket_rsa_kekek_source: ");
+	for (int i = 0; i < sizeof(eticket_rsa_kekek_source); i++)
+	{
+		debug_log("%02x", eticket_rsa_kekek_source[i]);
+	}
+    debug_log("\n");
 
     debug_log("rsa_oaep_kek_generation_source: ");
     char rsa_oaep_kek_generation_source[0x10];
