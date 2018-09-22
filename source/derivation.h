@@ -6,6 +6,7 @@
 #include "packages12.h"
 
 #include "pki.h"
+#include "sysmodules.h"
 
 //extern const char package1_path[256];
 extern const char secmon_path[256];

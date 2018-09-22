@@ -5,7 +5,7 @@ const char nokey[6] = "nokey\0";
 
 const char ZERO_KEY[0x100] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-const char KEY_NAMES[0x13][32] = {
+const char KEY_NAMES[0x16][32] = {
 	"secure_boot_key",                      //Key 0x00
 	"tsec_key",                             //Key 0x01
 	"keyblob_mac_key_source\0",             //Key 0x02
@@ -24,10 +24,13 @@ const char KEY_NAMES[0x13][32] = {
 	"header_kek_source\0",                  //Key 0x0F
 	"header_key_source\0",                  //Key 0x10
 	"encrypted_header_key\0",               //Key 0x11
-	"header_key\0"                          //Key 0x12
+	"header_key\0",                         //Key 0x12
+	"eticket_rsa_kek_source\0",             //Key 0x13
+	"eticket_rsa_kekek_source\0",           //Key 0x14
+	"eticket_rsa_kek\0"                     //Key 0x15
 };
 
-const int KEY_SIZES[0x13] = {
+const int KEY_SIZES[0x16] = {
 	0x10,                                   //Key 0x00 : secure_boot_key
 	0x10,                                   //Key 0x01 : tsec_key
 	0x10,                                   //Key 0x02 : keyblob_mac_key_source
@@ -46,7 +49,10 @@ const int KEY_SIZES[0x13] = {
 	0x10,                                   //Key 0x0F : header_kek_source
 	0x20,                                   //Key 0x10 : header_key_source
 	0x20,                                   //Key 0x11 : encrypted_header_key
-	0x20                                    //Key 0x12 : header_key
+	0x20,                                   //Key 0x12 : header_key
+	0x10,                                   //Key 0x13 : eticket_rsa_kek_source
+	0x10,                                   //Key 0x14 : eticket_rsa_kekek_source
+	0x10,                                   //Key 0x15 : eticket_rsa_kek
 };
 
 const char KEYSET_NAMES[0x0B][32] = {
@@ -77,7 +83,7 @@ const int KEYSET_SIZES[0x0B] = {
 	0x10,                                   //Key 0x0A : key_area_key_system_
 };
 
-const char KEY_HASHES[0x13][32] = {
+const char KEY_HASHES[0x16][32] = {
 	"",                                                                                                                           //Dummy Hash 0x00 : Key 0x00 : secure_boot_key
 	"",                                                                                                                           //Dummy Hash 0x01 : Key 0x01 : tsec_key
 	"\xB2\x4B\xD2\x93\x25\x9D\xBC\x7A\xC5\xD6\x3F\x88\xE6\x0C\x59\x79\x24\x98\xE6\xFC\x54\x43\x40\x2C\x7F\xFE\x87\xEE\x8B\x61\xA3\xF0", //Hash 0x00 : Key 0x02 : keyblob_mac_key_source
@@ -96,7 +102,10 @@ const char KEY_HASHES[0x13][32] = {
 	"\x18\x88\xCA\xED\x55\x51\xB3\xED\xE0\x14\x99\xE8\x7C\xE0\xD8\x68\x27\xF8\x08\x20\xEF\xB2\x75\x92\x10\x55\xAA\x4E\x2A\xBD\xFF\xC2", //Hash 0x0F : Key 0x0F : header_kek_source
 	"\x8F\x78\x3E\x46\x85\x2D\xF6\xBE\x0B\xA4\xE1\x92\x73\xC4\xAD\xBA\xEE\x16\x38\x00\x43\xE1\xB8\xC4\x18\xC4\x08\x9A\x8B\xD6\x4A\xA6", //Hash 0x10 : Key 0x10 : header_key_source
 	"",                                                                                                                           //Dummy Hash 0x00 : Key 0x11 : encrypted_header_key
-	""                                                                                                                            //Dummy Hash 0x00 : Key 0x12 : header_key
+	"",                                                                                                                           //Dummy Hash 0x00 : Key 0x12 : header_key
+	"\xB7\x1D\xB2\x71\xDC\x33\x8D\xF3\x80\xAA\x2C\x43\x35\xEF\x88\x73\xB1\xAF\xD4\x08\xE8\x0B\x35\x82\xD8\x71\x9F\xC8\x1C\x5E\x51\x1C", //Hash 0x13 : Key 0x13 : eticket_rsa_kek_source
+	"\xE8\x96\x5A\x18\x7D\x30\xE5\x78\x69\xF5\x62\xD0\x43\x83\xC9\x96\xDE\x48\x7B\xBA\x57\x61\x36\x3D\x2D\x4D\x32\x39\x18\x66\xA8\x5C", //Hash 0x14 : Key 0x14 : eticket_rsa_kekek_source
+	"",                                                                                                                           //Dummy Hash 0x00 : Key 0x15 : eticket_rsa_kek
 };
 
 const char KEYBLOB_SEEDS[0x20][0x10] = {

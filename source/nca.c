@@ -6,6 +6,8 @@
 #include "utils.h"
 #include "filepath.h"
 
+#include "util.h"
+
 /* Initialize the context. */
 void nca_init(nca_ctx_t *ctx) {
     memset(ctx, 0, sizeof(*ctx));
@@ -225,7 +227,7 @@ size_t nca_section_fread(nca_section_ctx_t *ctx, void *buffer, size_t count) {
                             }
                             nca_section_fseek(&base_ctx->section_contexts[romfs_section_num], ctx->bktr_ctx.base_seek);
                             if ((read = nca_section_fread(&base_ctx->section_contexts[romfs_section_num], buffer, count)) != count) {
-                                fprintf(stderr, "Failed to read from Base NCA RomFS!\n");
+                                // fprintf(stderr, "Failed to read from Base NCA RomFS!\n");
                                 exit(EXIT_FAILURE);
                             }
                         } else if (ctx->tool_ctx->base_file_type == BASEFILE_FAKE) {
@@ -233,7 +235,7 @@ size_t nca_section_fread(nca_section_ctx_t *ctx, void *buffer, size_t count) {
                             memset(buffer, 0xCC, count);
                             read = count;
                         } else {
-                            fprintf(stderr, "Unknown Base File Type!\n");
+                            // fprintf(stderr, "Unknown Base File Type!\n");
                             exit(EXIT_FAILURE);
                         }
                     }        
@@ -291,27 +293,28 @@ void nca_free_section_contexts(nca_ctx_t *ctx) {
 }
 
 void nca_save(nca_ctx_t *ctx) {
+    debug_log("nca_save entered\n");
     /* Save header. */
     filepath_t *header_path = &ctx->tool_ctx->settings.header_path;
 
     if (header_path->valid == VALIDITY_VALID) {
-        printf("Saving Header to %s...\n", header_path->char_path);
+        //printf("Saving Header to %s...\n", header_path->char_path);
         FILE *f_hdr = os_fopen(header_path->os_path, OS_MODE_WRITE);
 
         if (f_hdr != NULL) {
             fwrite(&ctx->header, 1, 0xC00, f_hdr);
             fclose(f_hdr);
         } else {
-            fprintf(stderr, "Failed to open %s!\n", header_path->char_path);
+            //fprintf(stderr, "Failed to open %s!\n", header_path->char_path);
         }
     }
 
-    
     for (unsigned int i = 0; i < 4; i++) {
-        if (ctx->section_contexts[i].is_present) {
-            /* printf("Saving section %"PRId32"...\n", i); */
+        if (ctx->section_contexts[i].is_present && ctx->section_contexts[i].size > 0) {
+            /* // printf("Saving section %"PRId32"...\n", i); */
+            debug_log("Saving section %"PRId32"...\n", i);
             nca_save_section(&ctx->section_contexts[i]);
-            printf("\n");
+            //printf("\n");
         }
     }
     
@@ -319,18 +322,18 @@ void nca_save(nca_ctx_t *ctx) {
     filepath_t *dec_path = &ctx->tool_ctx->settings.plaintext_path;
 
     if (dec_path->valid == VALIDITY_VALID) {
-        printf("Saving Decrypted NCA to %s...\n", dec_path->char_path);
+        //printf("Saving Decrypted NCA to %s...\n", dec_path->char_path);
         FILE *f_dec = os_fopen(dec_path->os_path, OS_MODE_WRITE);
 
         if (f_dec != NULL) {
             if (fwrite(&ctx->header, 1, 0xC00, f_dec) != 0xC00) {
-                fprintf(stderr, "Failed to write header!\n");
+                //fprintf(stderr, "Failed to write header!\n");
                 exit(EXIT_FAILURE);
             }
             
             unsigned char *buf = malloc(0x400000);
             if (buf == NULL) {
-                fprintf(stderr, "Failed to allocate file-save buffer!\n");
+                //fprintf(stderr, "Failed to allocate file-save buffer!\n");
                 exit(EXIT_FAILURE);
             }
             for (unsigned int i = 0; i < 4; i++) {
@@ -346,11 +349,11 @@ void nca_save(nca_ctx_t *ctx) {
                     while (ofs < end_ofs) {       
                         if (ofs + read_size >= end_ofs) read_size = end_ofs - ofs;
                         if (nca_section_fread(&ctx->section_contexts[i], buf, read_size) != read_size) {
-                            fprintf(stderr, "Failed to read file!\n");
+                            //fprintf(stderr, "Failed to read file!\n");
                             exit(EXIT_FAILURE);
                         }
                         if (fwrite(buf, 1, read_size, f_dec) != read_size) {
-                            fprintf(stderr, "Failed to write file!\n");
+                            //fprintf(stderr, "Failed to write file!\n");
                             exit(EXIT_FAILURE);
                         }
                         ofs += read_size;
@@ -364,24 +367,26 @@ void nca_save(nca_ctx_t *ctx) {
 
             free(buf);
         } else {
-            fprintf(stderr, "Failed to open %s!\n", dec_path->char_path);
+            //fprintf(stderr, "Failed to open %s!\n", dec_path->char_path);
         }
     }
 }
 
 void nca_process(nca_ctx_t *ctx) {
+    debug_log("Greetings from sunny nca_process!\n");
+    
     /* First things first, decrypt header. */
     if (!nca_decrypt_header(ctx)) {
-        fprintf(stderr, "Invalid NCA header! Are keys correct?\n");
+        //fprintf(stderr, "Invalid NCA header! Are keys correct?\n");
         return;
     }
-
+    
     if (rsa2048_pss_verify(&ctx->header.magic, 0x200, ctx->header.fixed_key_sig, ctx->tool_ctx->settings.keyset.nca_hdr_fixed_key_modulus)) {
         ctx->fixed_sig_validity = VALIDITY_VALID;
     } else {
         ctx->fixed_sig_validity = VALIDITY_INVALID;
     }
-
+    
     /* Sort out crypto type. */
     ctx->crypto_type = ctx->header.crypto_type;
     if (ctx->header.crypto_type2 > ctx->header.crypto_type)
@@ -397,7 +402,7 @@ void nca_process(nca_ctx_t *ctx) {
             break;
         }
     }
-
+    
     /* Decrypt key area if required. */
     if (!ctx->has_rights_id) {
         nca_decrypt_key_area(ctx);
@@ -409,7 +414,7 @@ void nca_process(nca_ctx_t *ctx) {
             free_aes_ctx(aes_ctx);
         }
     }
-
+    
     /* Parse sections. */
     for (unsigned int i = 0; i < 4; i++) {
         if (ctx->header.section_entries[i].media_start_offset) { /* Section exists. */
@@ -463,7 +468,7 @@ void nca_process(nca_ctx_t *ctx) {
             }
 
             if (ctx->tool_ctx->action & ACTION_VERIFY) {
-                printf("Verifying section %"PRId32"...\n", i);
+                //printf("Verifying section %"PRId32"...\n", i);
             }
             switch (ctx->section_contexts[i].type) {
                 case PFS0:
@@ -489,8 +494,13 @@ void nca_process(nca_ctx_t *ctx) {
                     break;
             }
         }
+        else
+        {
+            memset(&ctx->section_contexts[i], 0x00, sizeof(nca_section_ctx_t));
+        }
     }
-
+        
+    debug_log("done. saving nca\n");
     if (ctx->tool_ctx->action & ACTION_INFO) {
         nca_print(ctx);
     }
@@ -504,7 +514,7 @@ void nca_process(nca_ctx_t *ctx) {
 int nca_decrypt_header(nca_ctx_t *ctx) {
     fseeko64(ctx->file, 0, SEEK_SET);
     if (fread(&ctx->header, 1, 0xC00, ctx->file) != 0xC00) {
-        fprintf(stderr, "Failed to read NCA header!\n");
+        //fprintf(stderr, "Failed to read NCA header!\n");
         return 0;
     }
 
@@ -589,14 +599,14 @@ char *nca_get_encryption_type(nca_ctx_t *ctx) {
 }
 
 void nca_print_key_area(nca_ctx_t *ctx) {
-    printf("Key Area (Encrypted):\n");
+    // printf("Key Area (Encrypted):\n");
     for (unsigned int i = 0; i < 0x4; i++) {
-        printf("    Key %"PRId32" (Encrypted):              ", i);
+        // printf("    Key %"PRId32" (Encrypted):              ", i);
         memdump(stdout, "", &ctx->header.encrypted_keys[i], 0x10);
     }
-    printf("Key Area (Decrypted):\n");
+    // printf("Key Area (Decrypted):\n");
     for (unsigned int i = 0; i < 0x4; i++) {
-        printf("    Key %"PRId32" (Decrypted):              ", i);
+        // printf("    Key %"PRId32" (Decrypted):              ", i);
         memdump(stdout, "", &ctx->decrypted_keys[i], 0x10);
     }
 }
@@ -617,13 +627,13 @@ char *nca_get_section_type(nca_section_ctx_t *meta) {
 
 
 void nca_print_sections(nca_ctx_t *ctx) {
-    printf("Sections:\n");
+    // printf("Sections:\n");
     for (unsigned int i = 0; i < 4; i++) {
         if (ctx->section_contexts[i].is_present) { /* Section exists. */            
-            printf("    Section %"PRId32":\n", i);
-            printf("        Offset:                     0x%012"PRIx64"\n", ctx->section_contexts[i].offset);
-            printf("        Size:                       0x%012"PRIx64"\n", ctx->section_contexts[i].size);
-            printf("        Partition Type:             %s\n", nca_get_section_type(&ctx->section_contexts[i]));
+            // printf("    Section %"PRId32":\n", i);
+            // printf("        Offset:                     0x%012"PRIx64"\n", ctx->section_contexts[i].offset);
+            // printf("        Size:                       0x%012"PRIx64"\n", ctx->section_contexts[i].size);
+            // printf("        Partition Type:             %s\n", nca_get_section_type(&ctx->section_contexts[i]));
             memdump(stdout, "        Section CTR:                ", &ctx->section_contexts[i].ctr, 16);
             switch (ctx->section_contexts[i].type) {
                 case PFS0:     {
@@ -640,7 +650,7 @@ void nca_print_sections(nca_ctx_t *ctx) {
                 }
                 case INVALID:
                 default:     {
-                    printf("        Unknown/invalid superblock!");
+                    // printf("        Unknown/invalid superblock!");
                 }
             }
         }
@@ -650,7 +660,7 @@ void nca_print_sections(nca_ctx_t *ctx) {
 
 /* Print out information about the NCA. */
 void nca_print(nca_ctx_t *ctx) {
-    printf("\nNCA:\n");
+    // printf("\nNCA:\n");
     print_magic("Magic:                              ", ctx->header.magic);
 
     if (ctx->tool_ctx->action & ACTION_VERIFY && ctx->fixed_sig_validity != VALIDITY_UNCHECKED) {
@@ -671,13 +681,13 @@ void nca_print(nca_ctx_t *ctx) {
     } else {
          memdump(stdout, "NPDM Signature:                     ", &ctx->header.npdm_key_sig, 0x100);
     }
-    printf("Content Size:                       0x%012"PRIx64"\n", ctx->header.nca_size);
-    printf("Title ID:                           %016"PRIx64"\n", ctx->header.title_id);
-    printf("SDK Version:                        %"PRId8".%"PRId8".%"PRId8".%"PRId8"\n", ctx->header.sdk_major, ctx->header.sdk_minor, ctx->header.sdk_micro, ctx->header.sdk_revision);
-    printf("Distribution type:                  %s\n", nca_get_distribution_type(ctx));
-    printf("Content Type:                       %s\n", nca_get_content_type(ctx));
-    printf("Master Key Revision:                %"PRIx8" (%s)\n", ctx->crypto_type, get_key_revision_summary(ctx->crypto_type));
-    printf("Encryption Type:                    %s\n", nca_get_encryption_type(ctx));
+    // printf("Content Size:                       0x%012"PRIx64"\n", ctx->header.nca_size);
+    // printf("Title ID:                           %016"PRIx64"\n", ctx->header.title_id);
+    // printf("SDK Version:                        %"PRId8".%"PRId8".%"PRId8".%"PRId8"\n", ctx->header.sdk_major, ctx->header.sdk_minor, ctx->header.sdk_micro, ctx->header.sdk_revision);
+    // printf("Distribution type:                  %s\n", nca_get_distribution_type(ctx));
+    // printf("Content Type:                       %s\n", nca_get_content_type(ctx));
+    // printf("Master Key Revision:                %"PRIx8" (%s)\n", ctx->crypto_type, get_key_revision_summary(ctx->crypto_type));
+    // printf("Encryption Type:                    %s\n", nca_get_encryption_type(ctx));
 
     if (ctx->has_rights_id) {        
         memdump(stdout, "Rights ID:                          ", &ctx->header.rights_id, 0x10);
@@ -686,7 +696,7 @@ void nca_print(nca_ctx_t *ctx) {
             memdump(stdout, "Titlekey (Decrypted)                ", ctx->tool_ctx->settings.dec_titlekey, 0x10);
         }
     } else {
-        printf("Key Area Encryption Key:            %"PRIx8"\n", ctx->header.kaek_ind);
+        // printf("Key Area Encryption Key:            %"PRIx8"\n", ctx->header.kaek_ind);
         nca_print_key_area(ctx);
     }
 
@@ -696,7 +706,7 @@ void nca_print(nca_ctx_t *ctx) {
 
     nca_print_sections(ctx);
 
-    printf("\n");
+    // printf("\n");
 }
 
 validity_t nca_section_check_external_hash_table(nca_section_ctx_t *ctx, unsigned char *hash_table, uint64_t data_ofs, uint64_t data_len, uint64_t block_size, int full_block) {
@@ -708,7 +718,7 @@ validity_t nca_section_check_external_hash_table(nca_section_ctx_t *ctx, unsigne
     uint64_t read_size = block_size;
     unsigned char *block = malloc(block_size);
     if (block == NULL) {
-        fprintf(stderr, "Failed to allocate hash block!\n");
+        // fprintf(stderr, "Failed to allocate hash block!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -724,9 +734,9 @@ validity_t nca_section_check_external_hash_table(nca_section_ctx_t *ctx, unsigne
 
         uint64_t r = nca_section_fread(ctx, block, read_size);
         if (r != read_size) {
-            fprintf(stderr, "%012"PRIx64" %012"PRIx64" %08"PRIx64"\n", ofs, data_len, r);
-            fprintf(stderr, "%d %d\n", ctx->is_decrypted, ctx->section_num);
-            fprintf(stderr, "Failed to read section!\n");
+            // fprintf(stderr, "%012"PRIx64" %012"PRIx64" %08"PRIx64"\n", ofs, data_len, r);
+            // fprintf(stderr, "%d %d\n", ctx->is_decrypted, ctx->section_num);
+            // fprintf(stderr, "Failed to read section!\n");
             exit(EXIT_FAILURE);
         }        
         sha256_hash_buffer(cur_hash, block, full_block ? block_size : read_size);
@@ -752,13 +762,13 @@ validity_t nca_section_check_hash_table(nca_section_ctx_t *ctx, uint64_t hash_of
     hash_table_size *= 0x20;
     unsigned char *hash_table = malloc(hash_table_size);
     if (hash_table == NULL) {
-        fprintf(stderr, "Failed to allocate hash table!\n");
+        // fprintf(stderr, "Failed to allocate hash table!\n");
         exit(EXIT_FAILURE);
     }
 
     nca_section_fseek(ctx, hash_ofs);
     if (nca_section_fread(ctx, hash_table, hash_table_size) != hash_table_size) {
-        fprintf(stderr, "Failed to read section!\n");
+        // fprintf(stderr, "Failed to read section!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -771,17 +781,17 @@ validity_t nca_section_check_hash_table(nca_section_ctx_t *ctx, uint64_t hash_of
 
 void nca_save_pfs0_file(nca_section_ctx_t *ctx, uint32_t i, filepath_t *dirpath) {
     if (i >= ctx->pfs0_ctx.header->num_files) {
-        fprintf(stderr, "Could not save file %"PRId32"!\n", i);
+        //fprintf(stderr, "Could not save file %"PRId32"!\n", i);
         exit(EXIT_FAILURE);
     }
     pfs0_file_entry_t *cur_file = pfs0_get_file_entry(ctx->pfs0_ctx.header, i);
     if (cur_file->size >= ctx->size) {
-        fprintf(stderr, "File %"PRId32" too big in PFS0 (section %"PRId32")!\n", i, ctx->section_num);
+        //fprintf(stderr, "File %"PRId32" too big in PFS0 (section %"PRId32")!\n", i, ctx->section_num);
         exit(EXIT_FAILURE);
     }
 
     if (strlen(pfs0_get_file_name(ctx->pfs0_ctx.header, i)) >= MAX_PATH - strlen(dirpath->char_path) - 1) {
-        fprintf(stderr, "Filename too long in PFS0!\n");
+        //fprintf(stderr, "Filename too long in PFS0!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -789,7 +799,8 @@ void nca_save_pfs0_file(nca_section_ctx_t *ctx, uint32_t i, filepath_t *dirpath)
     filepath_copy(&filepath, dirpath);
     filepath_append(&filepath, "%s", pfs0_get_file_name(ctx->pfs0_ctx.header, i));
 
-    printf("Saving %s to %s...\n", pfs0_get_file_name(ctx->pfs0_ctx.header, i), filepath.char_path);
+    debug_log("Saving %s to %s...\n", pfs0_get_file_name(ctx->pfs0_ctx.header, i), filepath.char_path);
+    //printf("Saving %s to %s...\n", pfs0_get_file_name(ctx->pfs0_ctx.header, i), filepath.char_path);
     uint64_t ofs = ctx->pfs0_ctx.superblock->pfs0_offset + pfs0_get_header_size(ctx->pfs0_ctx.header) + cur_file->offset;
     nca_save_section_file(ctx, ofs, cur_file->size, &filepath);
 }
@@ -809,19 +820,19 @@ void nca_process_pfs0_section(nca_section_ctx_t *ctx) {
     pfs0_header_t raw_header; 
     nca_section_fseek(ctx, sb->pfs0_offset);
     if (nca_section_fread(ctx, &raw_header, sizeof(raw_header)) != sizeof(raw_header)) {
-        fprintf(stderr, "Failed to read PFS0 header!\n");
+        // fprintf(stderr, "Failed to read PFS0 header!\n");
         exit(EXIT_FAILURE);
     }
 
     uint64_t header_size = pfs0_get_header_size(&raw_header);
     ctx->pfs0_ctx.header = malloc(header_size);
     if (ctx->pfs0_ctx.header == NULL) {
-        fprintf(stderr, "Failed to get PFS0 header size!\n");
+        // fprintf(stderr, "Failed to get PFS0 header size!\n");
         exit(EXIT_FAILURE);
     }
     nca_section_fseek(ctx, sb->pfs0_offset);
     if (nca_section_fread(ctx, ctx->pfs0_ctx.header, header_size) != header_size) {
-        fprintf(stderr, "Failed to read PFS0 header!\n");
+        // fprintf(stderr, "Failed to read PFS0 header!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -830,18 +841,18 @@ void nca_process_pfs0_section(nca_section_ctx_t *ctx) {
         if (strcmp(pfs0_get_file_name(ctx->pfs0_ctx.header, i), "main.npdm") == 0) {
             /* We might have found the exefs... */
             if (cur_file->size >= sb->pfs0_size) {
-                fprintf(stderr, "NPDM too big!\n");
+                // fprintf(stderr, "NPDM too big!\n");
                 exit(EXIT_FAILURE);
             }
 
             ctx->pfs0_ctx.npdm = malloc(cur_file->size);
             if (ctx->pfs0_ctx.npdm == NULL) {
-                fprintf(stderr, "Failed to allocate NPDM!\n");
+                // fprintf(stderr, "Failed to allocate NPDM!\n");
                 exit(EXIT_FAILURE);
             }
             nca_section_fseek(ctx, sb->pfs0_offset + pfs0_get_header_size(ctx->pfs0_ctx.header) + cur_file->offset);
             if (nca_section_fread(ctx, ctx->pfs0_ctx.npdm, cur_file->size) != cur_file->size) {
-                fprintf(stderr, "Failed to read NPDM!\n");
+                // fprintf(stderr, "Failed to read NPDM!\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -872,7 +883,7 @@ void nca_process_ivfc_section(nca_section_ctx_t *ctx) {
         }
         if (ctx->tool_ctx->action & ACTION_VERIFY && i != 0) {
             /* Actually check the table. */
-            printf("    Verifying IVFC Level %"PRId32"...\n", i);
+            // printf("    Verifying IVFC Level %"PRId32"...\n", i);
             cur_level->hash_validity = nca_section_check_hash_table(ctx, cur_level->hash_offset, cur_level->data_offset, cur_level->data_size, cur_level->hash_block_size, 1);
         }
     }
@@ -880,32 +891,32 @@ void nca_process_ivfc_section(nca_section_ctx_t *ctx) {
     ctx->romfs_ctx.romfs_offset = ctx->romfs_ctx.ivfc_levels[IVFC_MAX_LEVEL - 1].data_offset;
     nca_section_fseek(ctx, ctx->romfs_ctx.romfs_offset);
     if (nca_section_fread(ctx, &ctx->romfs_ctx.header, sizeof(romfs_hdr_t)) != sizeof(romfs_hdr_t)) {
-        fprintf(stderr, "Failed to read RomFS header!\n");
+        // fprintf(stderr, "Failed to read RomFS header!\n");
     }
 
     if ((ctx->tool_ctx->action & (ACTION_EXTRACT | ACTION_LISTROMFS)) && ctx->romfs_ctx.header.header_size == ROMFS_HEADER_SIZE) {
         /* Pre-load the file/data entry caches. */
         ctx->romfs_ctx.directories = calloc(1, ctx->romfs_ctx.header.dir_meta_table_size);
         if (ctx->romfs_ctx.directories == NULL) {
-            fprintf(stderr, "Failed to allocate RomFS directory cache!\n");
+            // fprintf(stderr, "Failed to allocate RomFS directory cache!\n");
             exit(EXIT_FAILURE);
         }
 
         /* Switch RomFS has actual entries at table offset + 4 for no good reason. */
         nca_section_fseek(ctx, ctx->romfs_ctx.romfs_offset + ctx->romfs_ctx.header.dir_meta_table_offset + 4);
         if (nca_section_fread(ctx, ctx->romfs_ctx.directories, ctx->romfs_ctx.header.dir_meta_table_size) != ctx->romfs_ctx.header.dir_meta_table_size) {
-            fprintf(stderr, "Failed to read RomFS directory cache!\n");
+            // fprintf(stderr, "Failed to read RomFS directory cache!\n");
             exit(EXIT_FAILURE);
         }
 
         ctx->romfs_ctx.files = calloc(1, ctx->romfs_ctx.header.file_meta_table_size);
         if (ctx->romfs_ctx.files == NULL) {
-            fprintf(stderr, "Failed to allocate RomFS file cache!\n");
+            // fprintf(stderr, "Failed to allocate RomFS file cache!\n");
             exit(EXIT_FAILURE);
         }
         nca_section_fseek(ctx, ctx->romfs_ctx.romfs_offset + ctx->romfs_ctx.header.file_meta_table_offset);
         if (nca_section_fread(ctx, ctx->romfs_ctx.files, ctx->romfs_ctx.header.file_meta_table_size) != ctx->romfs_ctx.header.file_meta_table_size) {
-            fprintf(stderr, "Failed to read RomFS file cache!\n");
+            // fprintf(stderr, "Failed to read RomFS file cache!\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -917,29 +928,29 @@ void nca_process_bktr_section(nca_section_ctx_t *ctx) {
     if (sb->relocation_header.magic == MAGIC_BKTR && sb->subsection_header.magic == MAGIC_BKTR) {
         if (sb->relocation_header.offset + sb->relocation_header.size != sb->subsection_header.offset ||
             sb->subsection_header.offset + sb->subsection_header.size != ctx->size) {
-            fprintf(stderr, "Invalid BKTR layout!\n");
+            // fprintf(stderr, "Invalid BKTR layout!\n");
             exit(EXIT_FAILURE);
         }
         /* Allocate space for an extra (fake) relocation entry, to simplify our logic. */
         void *relocs = calloc(1, sb->relocation_header.size + (0x3FF0 / sizeof(uint64_t)) * sizeof(bktr_relocation_entry_t));
         if (relocs == NULL) {
-            fprintf(stderr, "Failed to allocate relocation header!\n");
+            // fprintf(stderr, "Failed to allocate relocation header!\n");
             exit(EXIT_FAILURE);
         }
         /* Allocate space for an extra (fake) subsection entry, to simplify our logic. */
         void *subs = calloc(1, sb->subsection_header.size + (0x3FF0 / sizeof(uint64_t)) * sizeof(bktr_subsection_entry_t) + sizeof(bktr_subsection_entry_t));
         if (subs == NULL) {
-            fprintf(stderr, "Failed to allocate subsection header!\n");
+            // fprintf(stderr, "Failed to allocate subsection header!\n");
             exit(EXIT_FAILURE);
         }
         nca_section_fseek(ctx, sb->relocation_header.offset);
         if (nca_section_fread(ctx, relocs, sb->relocation_header.size) != sb->relocation_header.size) {
-            fprintf(stderr, "Failed to read relocation header!\n");
+            // fprintf(stderr, "Failed to read relocation header!\n");
             exit(EXIT_FAILURE);
         }
         nca_section_fseek(ctx, sb->subsection_header.offset);
         if (nca_section_fread(ctx, subs, sb->subsection_header.size) != sb->subsection_header.size) {
-            fprintf(stderr, "Failed to read subsection header!\n");
+            // fprintf(stderr, "Failed to read subsection header!\n");
             exit(EXIT_FAILURE);
         }
         
@@ -999,7 +1010,7 @@ void nca_process_bktr_section(nca_section_ctx_t *ctx) {
             }
             if (ctx->tool_ctx->action & ACTION_VERIFY && i != 0) {
                 /* Actually check the table. */
-                printf("    Verifying IVFC Level %"PRId32"...\n", i);
+                // printf("    Verifying IVFC Level %"PRId32"...\n", i);
                 cur_level->hash_validity = nca_section_check_hash_table(ctx, cur_level->hash_offset, cur_level->data_offset, cur_level->data_size, cur_level->hash_block_size, 1);
             }
         }
@@ -1008,31 +1019,31 @@ void nca_process_bktr_section(nca_section_ctx_t *ctx) {
         if (ctx->tool_ctx->base_file != NULL) {
             nca_section_fseek(ctx, ctx->bktr_ctx.romfs_offset);
             if (nca_section_fread(ctx, &ctx->bktr_ctx.header, sizeof(romfs_hdr_t)) != sizeof(romfs_hdr_t)) {
-                fprintf(stderr, "Failed to read BKTR Virtual RomFS header!\n");
+                // fprintf(stderr, "Failed to read BKTR Virtual RomFS header!\n");
             }
 
             if ((ctx->tool_ctx->action & (ACTION_EXTRACT | ACTION_LISTROMFS)) && ctx->bktr_ctx.header.header_size == ROMFS_HEADER_SIZE) {
                 /* Pre-load the file/data entry caches. */
                 ctx->bktr_ctx.directories = calloc(1, ctx->bktr_ctx.header.dir_meta_table_size);
                 if (ctx->bktr_ctx.directories == NULL) {
-                    fprintf(stderr, "Failed to allocate RomFS directory cache!\n");
+                    // fprintf(stderr, "Failed to allocate RomFS directory cache!\n");
                     exit(EXIT_FAILURE);
                 }
 
                 /* Switch RomFS has actual entries at table offset + 4 for no good reason. */
                 nca_section_fseek(ctx, ctx->bktr_ctx.romfs_offset + ctx->bktr_ctx.header.dir_meta_table_offset + 4);
                 if (nca_section_fread(ctx, ctx->bktr_ctx.directories, ctx->bktr_ctx.header.dir_meta_table_size) != ctx->bktr_ctx.header.dir_meta_table_size) {
-                    fprintf(stderr, "Failed to read RomFS directory cache!\n");
+                    // fprintf(stderr, "Failed to read RomFS directory cache!\n");
                     exit(EXIT_FAILURE);
                 }
                 ctx->bktr_ctx.files = calloc(1, ctx->bktr_ctx.header.file_meta_table_size);
                 if (ctx->bktr_ctx.files == NULL) {
-                    fprintf(stderr, "Failed to allocate RomFS file cache!\n");
+                    // fprintf(stderr, "Failed to allocate RomFS file cache!\n");
                     exit(EXIT_FAILURE);
                 }
                 nca_section_fseek(ctx, ctx->bktr_ctx.romfs_offset + ctx->bktr_ctx.header.file_meta_table_offset);
                 if (nca_section_fread(ctx, ctx->bktr_ctx.files, ctx->bktr_ctx.header.file_meta_table_size) != ctx->bktr_ctx.header.file_meta_table_size) {
-                    fprintf(stderr, "Failed to read RomFS file cache!\n");
+                    // fprintf(stderr, "Failed to read RomFS file cache!\n");
                     exit(EXIT_FAILURE);
                 }
             }
@@ -1047,16 +1058,16 @@ void nca_print_pfs0_section(nca_section_ctx_t *ctx) {
         } else {
             memdump(stdout, "        Superblock Hash (FAIL):     ", &ctx->pfs0_ctx.superblock->master_hash, 0x20);
         }
-        printf("        Hash Table (%s):\n", GET_VALIDITY_STR(ctx->pfs0_ctx.hash_table_validity));
+        // printf("        Hash Table (%s):\n", GET_VALIDITY_STR(ctx->pfs0_ctx.hash_table_validity));
     } else {
         memdump(stdout, "        Superblock Hash:            ", &ctx->pfs0_ctx.superblock->master_hash, 0x20);
-        printf("        Hash Table:\n");
+        // printf("        Hash Table:\n");
     }
-    printf("            Offset:                 %012"PRIx64"\n", ctx->pfs0_ctx.superblock->hash_table_offset);
-    printf("            Size:                   %012"PRIx64"\n", ctx->pfs0_ctx.superblock->hash_table_size);
-    printf("            Block Size:             0x%"PRIx32"\n", ctx->pfs0_ctx.superblock->block_size);
-    printf("        PFS0 Offset:                %012"PRIx64"\n", ctx->pfs0_ctx.superblock->pfs0_offset);
-    printf("        PFS0 Size:                  %012"PRIx64"\n", ctx->pfs0_ctx.superblock->pfs0_size);
+    // printf("            Offset:                 %012"PRIx64"\n", ctx->pfs0_ctx.superblock->hash_table_offset);
+    // printf("            Size:                   %012"PRIx64"\n", ctx->pfs0_ctx.superblock->hash_table_size);
+    // printf("            Block Size:             0x%"PRIx32"\n", ctx->pfs0_ctx.superblock->block_size);
+    // printf("        PFS0 Offset:                %012"PRIx64"\n", ctx->pfs0_ctx.superblock->pfs0_offset);
+    // printf("        PFS0 Size:                  %012"PRIx64"\n", ctx->pfs0_ctx.superblock->pfs0_size);
 }
 
 void nca_print_ivfc_section(nca_section_ctx_t *ctx) {
@@ -1070,23 +1081,23 @@ void nca_print_ivfc_section(nca_section_ctx_t *ctx) {
             memdump(stdout, "        Superblock Hash:            ", &ctx->romfs_ctx.superblock->ivfc_header.master_hash, 0x20);
     } 
     print_magic("        Magic:                      ", ctx->romfs_ctx.superblock->ivfc_header.magic);
-    printf("        ID:                         %08"PRIx32"\n", ctx->romfs_ctx.superblock->ivfc_header.id);
+    // printf("        ID:                         %08"PRIx32"\n", ctx->romfs_ctx.superblock->ivfc_header.id);
     for (unsigned int i = 0; i < IVFC_MAX_LEVEL; i++) {
         if (ctx->tool_ctx->action & ACTION_VERIFY) {
-            printf("        Level %"PRId32" (%s):\n", i, GET_VALIDITY_STR(ctx->romfs_ctx.ivfc_levels[i].hash_validity));
+            // printf("        Level %"PRId32" (%s):\n", i, GET_VALIDITY_STR(ctx->romfs_ctx.ivfc_levels[i].hash_validity));
         } else {
-            printf("        Level %"PRId32":\n", i);
+            // printf("        Level %"PRId32":\n", i);
         }
-        printf("            Data Offset:            0x%012"PRIx64"\n", ctx->romfs_ctx.ivfc_levels[i].data_offset);
-        printf("            Data Size:              0x%012"PRIx64"\n", ctx->romfs_ctx.ivfc_levels[i].data_size);
-        if (i != 0) printf("            Hash Offset:            0x%012"PRIx64"\n", ctx->romfs_ctx.ivfc_levels[i].hash_offset);
-        printf("            Hash Block Size:        0x%08"PRIx32"\n", ctx->romfs_ctx.ivfc_levels[i].hash_block_size);
+        // printf("            Data Offset:            0x%012"PRIx64"\n", ctx->romfs_ctx.ivfc_levels[i].data_offset);
+        // printf("            Data Size:              0x%012"PRIx64"\n", ctx->romfs_ctx.ivfc_levels[i].data_size);
+        // if (i != 0)  printf("            Hash Offset:            0x%012"PRIx64"\n", ctx->romfs_ctx.ivfc_levels[i].hash_offset);
+        // printf("            Hash Block Size:        0x%08"PRIx32"\n", ctx->romfs_ctx.ivfc_levels[i].hash_block_size);
     }
 }
 
 void nca_print_bktr_section(nca_section_ctx_t *ctx) {
     if (ctx->bktr_ctx.subsection_block == NULL) {
-        printf("        BKTR section seems to be corrupted.\n");
+        // printf("        BKTR section seems to be corrupted.\n");
         return;
     }
     int did_verify = (ctx->tool_ctx->action & ACTION_VERIFY) && (ctx->tool_ctx->base_file != NULL);
@@ -1100,32 +1111,33 @@ void nca_print_bktr_section(nca_section_ctx_t *ctx) {
             memdump(stdout, "        Superblock Hash:            ", &ctx->bktr_ctx.superblock->ivfc_header.master_hash, 0x20);
     } 
     print_magic("        Magic:                      ", ctx->bktr_ctx.superblock->ivfc_header.magic);
-    printf("        ID:                         %08"PRIx32"\n", ctx->bktr_ctx.superblock->ivfc_header.id);
+    // printf("        ID:                         %08"PRIx32"\n", ctx->bktr_ctx.superblock->ivfc_header.id);
     for (unsigned int i = 0; i < IVFC_MAX_LEVEL; i++) {
         if (did_verify) {
-            printf("        Level %"PRId32" (%s):\n", i, GET_VALIDITY_STR(ctx->bktr_ctx.ivfc_levels[i].hash_validity));
+            // printf("        Level %"PRId32" (%s):\n", i, GET_VALIDITY_STR(ctx->bktr_ctx.ivfc_levels[i].hash_validity));
         } else {
-            printf("        Level %"PRId32":\n", i);
+            // printf("        Level %"PRId32":\n", i);
         }
-        printf("            Data Offset:            0x%012"PRIx64"\n", ctx->bktr_ctx.ivfc_levels[i].data_offset);
-        printf("            Data Size:              0x%012"PRIx64"\n", ctx->bktr_ctx.ivfc_levels[i].data_size);
-        if (i != 0) printf("            Hash Offset:            0x%012"PRIx64"\n", ctx->bktr_ctx.ivfc_levels[i].hash_offset);
-        printf("            Hash Block Size:        0x%08"PRIx32"\n", ctx->bktr_ctx.ivfc_levels[i].hash_block_size);
+        // printf("            Data Offset:            0x%012"PRIx64"\n", ctx->bktr_ctx.ivfc_levels[i].data_offset);
+        // printf("            Data Size:              0x%012"PRIx64"\n", ctx->bktr_ctx.ivfc_levels[i].data_size);
+        // if (i != 0)  printf("            Hash Offset:            0x%012"PRIx64"\n", ctx->bktr_ctx.ivfc_levels[i].hash_offset);
+        // printf("            Hash Block Size:        0x%08"PRIx32"\n", ctx->bktr_ctx.ivfc_levels[i].hash_block_size);
     }
 }
 
 void nca_save_section_file(nca_section_ctx_t *ctx, uint64_t ofs, uint64_t total_size, filepath_t *filepath) {    
+    debug_log("nca_save_section_file\n");
     FILE *f_out = os_fopen(filepath->os_path, OS_MODE_WRITE);
 
     if (f_out == NULL) {
-        fprintf(stderr, "Failed to open %s!\n", filepath->char_path);
+        //fprintf(stderr, "Failed to open %s!\n", filepath->char_path);
         return;
     }
 
     uint64_t read_size = 0x400000; /* 4 MB buffer. */
     unsigned char *buf = malloc(read_size);
     if (buf == NULL) {
-        fprintf(stderr, "Failed to allocate file-save buffer!\n");
+        //fprintf(stderr, "Failed to allocate file-save buffer!\n");
         exit(EXIT_FAILURE);
     }
     memset(buf, 0xCC, read_size); /* Debug in case I fuck this up somehow... */
@@ -1134,11 +1146,11 @@ void nca_save_section_file(nca_section_ctx_t *ctx, uint64_t ofs, uint64_t total_
     while (ofs < end_ofs) {       
         if (ofs + read_size >= end_ofs) read_size = end_ofs - ofs;
         if (nca_section_fread(ctx, buf, read_size) != read_size) {
-            fprintf(stderr, "Failed to read file!\n");
+            //fprintf(stderr, "Failed to read file!\n");
             exit(EXIT_FAILURE);
         }
         if (fwrite(buf, 1, read_size, f_out) != read_size) {
-            fprintf(stderr, "Failed to write file!\n");
+            //fprintf(stderr, "Failed to write file!\n");
             exit(EXIT_FAILURE);
         }
         ofs += read_size;
@@ -1147,6 +1159,7 @@ void nca_save_section_file(nca_section_ctx_t *ctx, uint64_t ofs, uint64_t total_
     fclose(f_out);
 
     free(buf);
+    debug_log("nca_save_section_file done\n");
 }
 
 void nca_save_section(nca_section_ctx_t *ctx) {
@@ -1186,8 +1199,10 @@ void nca_save_section(nca_section_ctx_t *ctx) {
         secpath = &ctx->tool_ctx->settings.romfs_path.path;
     }
     if (secpath != NULL && secpath->valid == VALIDITY_VALID) {
-        printf("Saving Section %"PRId32" to %s...\n", ctx->section_num, secpath->char_path);
-        printf("Size: %012"PRIx64"\n", size);
+        //printf("Saving Section %"PRId32" to %s...\n", ctx->section_num, secpath->char_path);
+        //printf("Size: %012"PRIx64"\n", size);
+        debug_log("Saving Section %"PRId32" to %s...\n", ctx->section_num, secpath->char_path);
+        debug_log("Size: %012"PRIx64"\n", size);
         nca_save_section_file(ctx, offset, size, secpath);
     }
 
@@ -1200,7 +1215,7 @@ void nca_save_section(nca_section_ctx_t *ctx) {
             break;
         case BKTR:
             if (ctx->tool_ctx->base_file == NULL) {
-                fprintf(stderr, "Note: cannot save BKTR section without base romfs.\n");
+                //fprintf(stderr, "Note: cannot save BKTR section without base romfs.\n");
                 break;
             }
             nca_save_bktr_section(ctx);
@@ -1227,7 +1242,7 @@ void nca_save_pfs0_section(nca_section_ctx_t *ctx) {
             }
         }
     } else {
-        fprintf(stderr, "Error: section %"PRId32" is corrupted!\n", ctx->section_num);
+        //fprintf(stderr, "Error: section %"PRId32" is corrupted!\n", ctx->section_num);
         return;
     }
 }
@@ -1263,7 +1278,7 @@ int nca_visit_romfs_file(nca_section_ctx_t *ctx, uint32_t file_offset, filepath_
     }
     filepath_t *cur_path = calloc(1, sizeof(filepath_t));
     if (cur_path == NULL) {
-        fprintf(stderr, "Failed to allocate filepath!\n");
+        // fprintf(stderr, "Failed to allocate filepath!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -1283,10 +1298,10 @@ int nca_visit_romfs_file(nca_section_ctx_t *ctx, uint32_t file_offset, filepath_
     }
     if ((ctx->tool_ctx->action & ACTION_ONLYUPDATEDROMFS) == 0 || nca_is_romfs_file_updated(ctx, phys_offset, entry->size)) {
         if ((ctx->tool_ctx->action & ACTION_LISTROMFS) == 0) {
-            printf("Saving %s...\n", cur_path->char_path);
+            // printf("Saving %s...\n", cur_path->char_path);
             nca_save_section_file(ctx, phys_offset, entry->size, cur_path);
         } else {
-            printf("rom:%s\n", cur_path->char_path);
+            // printf("rom:%s\n", cur_path->char_path);
         }
     } else {
         found_file = 0;
@@ -1310,7 +1325,7 @@ int nca_visit_romfs_dir(nca_section_ctx_t *ctx, uint32_t dir_offset, filepath_t 
     } 
     filepath_t *cur_path = calloc(1, sizeof(filepath_t));
     if (cur_path == NULL) {
-        fprintf(stderr, "Failed to allocate filepath!\n");
+        // fprintf(stderr, "Failed to allocate filepath!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -1374,7 +1389,7 @@ void nca_save_ivfc_section(nca_section_ctx_t *ctx) {
         }
     }
 
-    fprintf(stderr, "Error: section %"PRId32" is corrupted!\n", ctx->section_num);
+    // fprintf(stderr, "Error: section %"PRId32" is corrupted!\n", ctx->section_num);
 }
 
 void nca_save_bktr_section(nca_section_ctx_t *ctx) {
@@ -1404,5 +1419,5 @@ void nca_save_bktr_section(nca_section_ctx_t *ctx) {
         }
     }
 
-    fprintf(stderr, "Error: section %"PRId32" is corrupted!\n", ctx->section_num);
+    // fprintf(stderr, "Error: section %"PRId32" is corrupted!\n", ctx->section_num);
 }

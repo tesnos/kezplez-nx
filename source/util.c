@@ -232,7 +232,7 @@ FILE* safe_open_key_file()
 void hactool_init(application_ctx* appstate)
 {
 	memset(&appstate->tool_ctx, 0, sizeof(appstate->tool_ctx));
-	appstate->tool_ctx.action = ACTION_INFO | ACTION_EXTRACT;
+	appstate->tool_ctx.action = ACTION_EXTRACT;
 	// key init
 	FILE* keyfile = safe_fopen(keyfile_path, FMODE_READ);
 	
