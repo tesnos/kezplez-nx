@@ -32,7 +32,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE	:=	kezplez-nx
 APP_AUTHOR	:=	tesnos6921, shchmue
-APP_VERSION	:=	1.2
+APP_VERSION	:=	1.2.3
 
 TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 BUILD		:=	build

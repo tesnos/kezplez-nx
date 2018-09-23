@@ -33,11 +33,6 @@ void dump_and_decrypt_es(application_ctx* appstate)
     
     while ((ent = readdir(dir)))
     {
-        if (ent->d_name[0] == '.')
-		{
-			continue;
-		}
-
         strcpy(tmppath, registered_path);
 		strcat(tmppath, "/");
 		strcat(tmppath, ent->d_name);
@@ -74,6 +69,12 @@ void dump_and_decrypt_es(application_ctx* appstate)
 	fread(ES_DATA, ES_SIZE, 1, ES_f);
 	fclose(ES_f);
 
+    if (ES_SIZE == 0)
+    {
+        debug_log("es decryption went wrong, filesize 0. Failed to get eticket_rsa_kek.\n");
+        return;
+    }
+
     // rewrite of find_via_hash to accomodate need for raw output instead of hex string
     unsigned char rawkey[KEY_SIZES[0x13]];
 	unsigned char digest[KEY_SIZES[0x13] * 2];
@@ -96,8 +97,8 @@ void dump_and_decrypt_es(application_ctx* appstate)
 	}
     debug_log("\n");
 
-    memset(rawkey, 0x00, KEY_SIZES[0x14]);
-	memset(digest, 0x00, KEY_SIZES[0x14] * 2);
+    memset(rawkey, 0x00, sizeof(rawkey));
+	memset(digest, 0x00, sizeof(digest));
 	char eticket_rsa_kekek_source[KEY_SIZES[0x14]];
 	for (int i = 0; i < (ES_SIZE - KEY_SIZES[0x14]); i++)
 	{
@@ -150,6 +151,16 @@ void dump_and_decrypt_es(application_ctx* appstate)
 		debug_log("%02x", kekek_unwrapped[i]);
 	}
 	debug_log("\n");
+
+    memset(rawkey, 0x00, sizeof(rawkey));
+	memset(digest, 0x00, sizeof(digest));
+    memcpy(rawkey, eticket_rsa_kek, KEY_SIZES[0x15]);
+    mbedtls_sha256_ret(rawkey, KEY_SIZES[0x15], digest, 0);
+    if (memcmp((char*) digest, KEY_HASHES[0x15], sizeof(digest)) != 0)
+    {
+        debug_log("eticket_rsa_kek calculation failed. Check intermediate values in log.\n");
+        return;
+    }
 
     char eticket_rsa_kek_hex[KEY_SIZES[0x15] * 2];
     hex_of_key(eticket_rsa_kek, KEY_SIZES[0x15], eticket_rsa_kek_hex);

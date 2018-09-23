@@ -105,7 +105,7 @@ const char KEY_HASHES[0x16][32] = {
 	"",                                                                                                                           //Dummy Hash 0x00 : Key 0x12 : header_key
 	"\xB7\x1D\xB2\x71\xDC\x33\x8D\xF3\x80\xAA\x2C\x43\x35\xEF\x88\x73\xB1\xAF\xD4\x08\xE8\x0B\x35\x82\xD8\x71\x9F\xC8\x1C\x5E\x51\x1C", //Hash 0x13 : Key 0x13 : eticket_rsa_kek_source
 	"\xE8\x96\x5A\x18\x7D\x30\xE5\x78\x69\xF5\x62\xD0\x43\x83\xC9\x96\xDE\x48\x7B\xBA\x57\x61\x36\x3D\x2D\x4D\x32\x39\x18\x66\xA8\x5C", //Hash 0x14 : Key 0x14 : eticket_rsa_kekek_source
-	"",                                                                                                                           //Dummy Hash 0x00 : Key 0x15 : eticket_rsa_kek
+	"\x46\xCC\xCF\x28\x82\x86\xE3\x1C\x93\x13\x79\xDE\x9E\xFA\x28\x8C\x95\xC9\xA1\x5E\x40\xB0\x0A\x4C\x56\x3A\x8B\xE2\x44\xEC\xE5\x15", //Hash 0x15 : Key 0x15 : eticket_rsa_kek
 };
 
 const char KEYBLOB_SEEDS[0x20][0x10] = {
