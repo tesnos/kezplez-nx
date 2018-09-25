@@ -153,28 +153,31 @@ char hekate_tsecdump_new_path_full[512];
 char hekate_fusedump_path_full[512];
 
 
-void find_via_hash(char* data, const char* keyhash, int keysize, int datasize, char* resultkey)
+bool find_via_hash(char* data, const char* keyhash, int keysize, int datasize, char* resultkey, bool hexresult)
 {
-	unsigned char rawkey[keysize];
-	bool foundkey = false;
-	unsigned char digest[32];
+	unsigned char rawkey[keysize + 1];
+	unsigned char digest[0x20];
 	
-	for (int i = 0; i < (datasize - keysize); i++)
+	for (int i = 0; i <= (datasize - keysize); i++)
 	{
 		memcpy(rawkey, data + i, keysize);
 		mbedtls_sha256_ret(rawkey, keysize, digest, 0);
-		if (strncmp((char*) digest, keyhash, 32) == 0)
+		if (memcmp((char*) digest, keyhash, 0x20) == 0)
 		{
-			hex_of_key((char*) rawkey, keysize, resultkey);
-			foundkey = true;
-			break;
+			if (hexresult)
+			{
+				hex_of_key((char*) rawkey, keysize, resultkey);
+			}
+			else
+			{
+				memcpy(resultkey, rawkey, keysize);
+			}
+			return true;
 		}
 	}
 	
-	if (!foundkey)
-	{
-		memcpy(resultkey, nokey, 6);
-	}
+	memcpy(resultkey, nokey, 6);
+	return false;
 }
 
 void hex_of_key(char* rawkey, int keysize, char* resultkey)
@@ -230,7 +233,10 @@ void add_to_key_file_sized_indexed(const char* keyname, char* keycontent, int ke
 void find_and_add_key(char* data, int keyid, int datasize)
 {
 	char key[KEY_SIZES[keyid] * 2];
-	find_via_hash(data, KEY_HASHES[keyid], KEY_SIZES[keyid], datasize, key);
+	if (!find_via_hash(data, KEY_HASHES[keyid], KEY_SIZES[keyid], datasize, key, true))
+	{
+		debug_log("Failed to find %s!\n", KEY_NAMES[keyid]);
+	}
 	
 	keyfile = safe_open_key_file();
 	add_to_key_file_sized(KEY_NAMES[keyid], key, KEY_SIZES[keyid]);
@@ -324,50 +330,50 @@ void update_keyfile(int stage, nca_keyset_t* keyset)
 	
 	if (stage == 0)
 	{
-		debug_log("Adding keyset %sxx to the key file\n", "keyblob_key_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x01]);
 		add_keyset((char**) keyset->keyblob_keys, 0x01);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "keyblob_mac_key_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x02]);
 		add_keyset((char**) keyset->keyblob_mac_keys, 0x02);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "keyblob_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x03]);
 		add_keyset((char**) keyset->keyblobs, 0x03);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "master_key_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x04]);
 		add_keyset((char**) keyset->master_keys, 0x04);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "package1_key_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x05]);
 		add_keyset((char**) keyset->package1_keys, 0x05);
 	}
 	
 	else if (stage == 1)
 	{
-		debug_log("Adding keyset %sxx to the key file\n", "package2_key_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x06]);
 		add_keyset((char**) keyset->package2_keys, 0x06);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "titlekek_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x07]);
 		add_keyset((char**) keyset->titlekeks, 0x07);
 	}
 	
 	else if (stage == 2)
 	{
-		debug_log("Adding %s to the key file\n", "encrypted_header_key");
+		debug_log("Adding %s to the key file\n", KEY_NAMES[0x11]);
 		char encrypted_header_key_hex[KEY_SIZES[0x11] * 2];
 		hex_of_key((char*) keyset->encrypted_header_key, KEY_SIZES[0x11], encrypted_header_key_hex);
 		add_to_key_file_sized(KEY_NAMES[0x11], encrypted_header_key_hex, KEY_SIZES[0x11]);
 		
-		debug_log("Adding %s to the key file\n", "header_key");
+		debug_log("Adding %s to the key file\n", KEY_NAMES[0x12]);
 		char header_key_hex[KEY_SIZES[0x12] * 2];
 		hex_of_key((char*) keyset->header_key, KEY_SIZES[0x12], header_key_hex);
 		add_to_key_file_sized(KEY_NAMES[0x12], header_key_hex, KEY_SIZES[0x12]);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "key_area_key_application_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x08]);
 		add_keyset_key_area((char**) keyset->key_area_keys, 0x08, 0x00);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "key_area_key_ocean_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x09]);
 		add_keyset_key_area((char**) keyset->key_area_keys, 0x09, 0x01);
 		
-		debug_log("Adding keyset %sxx to the key file\n", "key_area_key_system_");
+		debug_log("Adding keyset %sxx to the key file\n", KEYSET_NAMES[0x0A]);
 		add_keyset_key_area((char**) keyset->key_area_keys, 0x0A, 0x02);
 	}
 	

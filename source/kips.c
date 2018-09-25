@@ -96,7 +96,7 @@ char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, in
 	return decompressed;
 }
 
-char* kip_get_full(FILE* kipfile, int* kipsize)
+char* kip_get_full(FILE* kipfile, int* kipsize, int segmask)
 {
 	debug_log("reading sizes...\n");
 	
@@ -123,34 +123,41 @@ char* kip_get_full(FILE* kipfile, int* kipsize)
 	debug_log("bss-size: %08x\n", bsssize);
 
 	
-	int t_dsize, r_dsize, d_dsize;
-	debug_log("decompressing sections (t)...\n");
-	char* text = blz_decompress(kipfile, toff, tfilesize, &t_dsize);
-	debug_log("decompressing sections (r)...\n");
-	char* ro   = blz_decompress(kipfile, roff, rfilesize, &r_dsize);
-	debug_log("decompressing sections (d)...\n");
-	char* data = blz_decompress(kipfile, doff, dfilesize, &d_dsize);
-	
-	if (text == NULL || ro == NULL || data == NULL)
-	{
-		if (text != NULL) { free(text); }
-		if (ro != NULL) { free(ro); }
-		if (data != NULL) { free(data); }
-		
-		return NULL;
+	int t_dsize = 0, r_dsize = 0, d_dsize = 0;
+	char* text = NULL, * ro = NULL, * data = NULL;
+	if (segmask & SEG_TEXT) {
+		debug_log("decompressing sections (t)...\n");
+		text = blz_decompress(kipfile, toff, tfilesize, &t_dsize);
+	}
+	if (segmask & SEG_RODATA) {
+		debug_log("decompressing sections (r)...\n");
+		ro   = blz_decompress(kipfile, roff, rfilesize, &r_dsize);
+	}
+	if (segmask & SEG_DATA) {
+		debug_log("decompressing sections (d)...\n");
+		data = blz_decompress(kipfile, doff, dfilesize, &d_dsize);
 	}
 	
 	
 	debug_log("joining sections...\n");
 	char* full = malloc(t_dsize + r_dsize + d_dsize);
 	
-	memcpy(full, text, t_dsize);
-	memcpy(full + t_dsize, ro, r_dsize);
-	memcpy(full + t_dsize + r_dsize, data, d_dsize);
+	if (text) {
+		memcpy(full, text, t_dsize);
+		free(text);
+	}
+	if (ro) {
+		memcpy(full + t_dsize, ro, r_dsize);
+		free(ro);
+	}
+	if (data) {
+		memcpy(full + t_dsize + r_dsize, data, d_dsize);
+		free(data);
+	}
 	
 	debug_log("cleaning up...\n");
-	free(text); free(ro); free(data);
 	*kipsize = t_dsize + r_dsize + d_dsize;
+	debug_log("kipsize %08x tsize %08x rsize %08x dsize %08x\n", *kipsize, t_dsize, r_dsize, d_dsize);
 	
 	return full;
 }
@@ -162,7 +169,7 @@ void extract_kip1s(application_ctx* appstate)
 	FILE* spl_f = safe_fopen(spl_path, FMODE_READ);
 	if (spl_f == NULL) { return; }
 	int spl_size;
-	char* spl_data = kip_get_full(spl_f, &spl_size);
+	char* spl_data = kip_get_full(spl_f, &spl_size, SEG_RODATA);
 	fclose(spl_f);
 	if (spl_data == NULL) { return; }
 	
@@ -179,7 +186,7 @@ void extract_kip1s(application_ctx* appstate)
 	FILE* FS_f = safe_fopen(FS_path, FMODE_READ);
 	if (FS_f == NULL) { return; }
 	int FS_size;
-	char* FS_data = kip_get_full(FS_f, &FS_size);
+	char* FS_data = kip_get_full(FS_f, &FS_size, SEG_RODATA | SEG_DATA);
 	fclose(FS_f);
 	if (FS_data == NULL) { return; }
 	
@@ -188,7 +195,7 @@ void extract_kip1s(application_ctx* appstate)
 	free(FS_data);
 	fclose(decomp_FS_f);
 	
-	debug_log("Result: FS_size == %08x\n", spl_size);
+	debug_log("Result: FS_size == %08x\n", FS_size);
 }
 
 void derive_part2_spl(application_ctx* appstate)

@@ -4,6 +4,9 @@
 #include "util.h"
 #include "keys.h"
 
+#define SEG_TEXT   (1 << 0)
+#define SEG_RODATA (1 << 1)
+#define SEG_DATA   (1 << 2)
 
 extern const char spl_path[256];
 extern const char decompressed_spl_path[256];
@@ -29,10 +32,11 @@ char* blz_decompress(FILE* has_compdata, u32 compdata_off, u32 compdata_size, in
  * 
  * @param kipfile Kernel Initial Process file, obtained from package2's INI1 portion
  * @param kipsize Place to store the size of the decompressed kip
+ * @param segmask Bitmask that determines which segments to return
  * 
  * @return Pointer to full decompressed data. Free this once done with it!!
  */
-char* kip_get_full(FILE* kipfile, int* kipsize);
+char* kip_get_full(FILE* kipfile, int* kipsize, int segmask);
 
 /**
  * @brief Decompresses both spl and FS kip1s and saves their decompressed versions

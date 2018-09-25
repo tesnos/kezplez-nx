@@ -46,8 +46,11 @@ extern char hekate_fusedump_path_full[512];
  * @param keysize How long, in bytes, the key is (should be from KEY_SIZES or KEYSET_SIZES)
  * @param datasize Size, in bytes, of data to search
  * @param resultkey Place to put result, should be keysize * 2 large. Will be hex version of the destination key if it was found, "nokey" otherwise
+ * @param hexresult true if result should be a hex string, false if byte string
+ * 
+ * @return True if found, false if not
  */
-void find_via_hash(char* data, const char* keyhash, int keysize, int datasize, char* resultkey);
+bool find_via_hash(char* data, const char* keyhash, int keysize, int datasize, char* resultkey, bool hexresult);
 
 /**
  * @brief Takes the data in rawkey, of size keysize, and creates a hex version of it in resultkey
