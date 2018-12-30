@@ -1,3 +1,5 @@
+# __NOTE: This software is no longer maintained, please consider its successor, [Lockpick](https://github.com/shchmue/Lockpick)__
+
 # kezplez-nx
 ### Now with 100% more keys!!
 ## The "easiest" way to get all 80+ Nintendo Switch keys to use with hactool!
